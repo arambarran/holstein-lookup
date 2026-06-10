@@ -124,16 +124,48 @@ read_ids <- function(path) {
   )
 }
 
+read_existing_results <- function(path) {
+  if (!file.exists(path) || file.info(path)$size == 0) {
+    return(tibble::tibble())
+  }
+
+  results <- readr::read_csv(path, show_col_types = FALSE)
+  if (!"searched_id" %in% names(results)) {
+    stop(
+      "Existing output is missing searched_id; use a new output path.",
+      call. = FALSE
+    )
+  }
+
+  results
+}
+
+write_results <- function(results, path) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  readr::write_csv(results, path, na = "")
+}
+
 files <- input_files(input_path)
 if (length(files) == 0) {
   stop("No CSV files found in input directory", call. = FALSE)
 }
 
+existing_results <- read_existing_results(output_path)
 ids <- purrr::map_dfr(files, read_ids) |>
   dplyr::filter(!is.na(.data$animal_id), .data$animal_id != "") |>
   dplyr::distinct(.data$animal_id, .keep_all = TRUE)
 
+if (nrow(existing_results) > 0) {
+  searched_ids <- paste0(search_prefix, ids$animal_id)
+  ids <- dplyr::filter(ids, !searched_ids %in% existing_results$searched_id)
+}
+
 if (nrow(ids) == 0) {
+  if (nrow(existing_results) > 0) {
+    message("No new animal IDs to look up; output already has results.")
+    quit(save = "no", status = 0)
+  }
+
   stop("No animal IDs found", call. = FALSE)
 }
 
@@ -215,22 +247,17 @@ lookup_one <- function(animal_id, input_source) {
   )
 }
 
-lookup_with_delay <- function(animal_id, input_source, index) {
-  row <- lookup_one(animal_id, input_source)
+for (index in seq_len(nrow(ids))) {
+  row <- lookup_one(ids$animal_id[[index]], ids$input_source[[index]])
+  existing_results <- dplyr::bind_rows(existing_results, row)
+  write_results(existing_results, output_path)
+
   if (index < nrow(ids) && delay_seconds > 0) {
     Sys.sleep(delay_seconds)
   }
-
-  row
 }
 
-rows <- purrr::pmap(
-  list(ids$animal_id, ids$input_source, seq_len(nrow(ids))),
-  lookup_with_delay
-)
-result <- dplyr::bind_rows(rows)
-dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
-readr::write_csv(result, output_path, na = "")
+result <- existing_results
 
 if (verbose) {
   message("Wrote ", nrow(result), " rows to ", output_path)

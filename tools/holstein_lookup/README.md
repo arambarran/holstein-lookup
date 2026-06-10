@@ -43,6 +43,10 @@ Rscript tools/holstein_lookup/holstein_lookup.R \
 
 ## Output
 
+The output CSV is saved after each completed lookup. If the script is stopped
+and rerun with the same output path, it skips IDs already present in
+`searched_id`.
+
 The output includes:
 
 ```text
