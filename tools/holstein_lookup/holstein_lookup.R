@@ -1,5 +1,6 @@
 #!/usr/bin/env Rscript
 
+required_packages <- c("jsonlite")
 endpoint <- "https://www.holstein.ca/en/AIS/ReadAnimalSearchGrid"
 request_headers <- c(
   "User-Agent" = paste(
@@ -46,9 +47,18 @@ if (is.null(input_path) || is.null(output_path)) {
   stop(usage, call. = FALSE)
 }
 
-if (!requireNamespace("jsonlite", quietly = TRUE)) {
-  stop("Install jsonlite first: install.packages('jsonlite')", call. = FALSE)
+check_required_package <- function(package) {
+  if (requireNamespace(package, quietly = TRUE)) {
+    return(invisible(TRUE))
+  }
+
+  stop(
+    sprintf("Install %s first: install.packages('%s')", package, package),
+    call. = FALSE
+  )
 }
+
+invisible(lapply(required_packages, check_required_package))
 
 read_response_body <- function(request_url) {
   if (nzchar(curl_path)) {
