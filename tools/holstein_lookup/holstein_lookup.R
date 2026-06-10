@@ -2,13 +2,13 @@
 
 required_packages <- c(
   "jsonlite",
-  "httr2",
   "readr",
   "dplyr",
   "purrr",
   "tibble"
 )
 endpoint <- "https://www.holstein.ca/en/AIS/ReadAnimalSearchGrid"
+curl_path <- Sys.which("curl")
 request_headers <- c(
   "User-Agent" = paste(
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
@@ -66,24 +66,31 @@ if (length(missing_packages) > 0) {
   )
 }
 
-add_request_headers <- function(request) {
-  do.call(
-    httr2::req_headers,
-    c(list(request), as.list(request_headers))
+read_response_body <- function(request_url) {
+  if (nzchar(curl_path)) {
+    curl_headers <- paste(names(request_headers), request_headers, sep = ": ")
+    curl_args <- c(
+      "-sS",
+      "-L",
+      "--max-time",
+      "60",
+      as.vector(rbind("-H", curl_headers)),
+      request_url
+    )
+
+    return(paste(
+      system2(curl_path[[1]], shQuote(curl_args), stdout = TRUE, stderr = TRUE),
+      collapse = "\n"
+    ))
+  }
+
+  connection <- url(request_url, headers = request_headers)
+  on.exit(close(connection), add = TRUE)
+
+  paste(
+    readLines(connection, warn = FALSE),
+    collapse = "\n"
   )
-}
-
-read_response_body <- function(search_string) {
-  response <- httr2::request(endpoint) |>
-    httr2::req_url_query(animalSearchString = search_string) |>
-    add_request_headers() |>
-    httr2::req_timeout(60) |>
-    httr2::req_error(is_error = function(...) {
-      FALSE
-    }) |>
-    httr2::req_perform()
-
-  httr2::resp_body_string(response)
 }
 
 response_error_message <- function(body) {
@@ -199,7 +206,7 @@ lookup_one <- function(animal_id, input_source) {
 
   body <- tryCatch(
     suppressWarnings(
-      read_response_body(search_string)
+      read_response_body(request_url)
     ),
     error = function(...) {
       NA_character_

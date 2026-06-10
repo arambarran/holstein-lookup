@@ -5,7 +5,7 @@ Look up Holstein Canada animal records from a CSV of animal IDs.
 ## Install
 
 ```r
-install.packages(c("jsonlite", "httr2", "readr", "dplyr", "purrr", "tibble"))
+install.packages(c("jsonlite", "readr", "dplyr", "purrr", "tibble"))
 ```
 
 ## Input
