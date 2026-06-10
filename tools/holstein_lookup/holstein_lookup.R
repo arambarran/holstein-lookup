@@ -136,7 +136,11 @@ read_existing_results <- function(path) {
     return(tibble::tibble())
   }
 
-  results <- readr::read_csv(path, show_col_types = FALSE)
+  results <- readr::read_csv(
+    path,
+    col_types = readr::cols(.default = readr::col_character()),
+    show_col_types = FALSE
+  )
   if (!"searched_id" %in% names(results)) {
     stop(
       "Existing output is missing searched_id; use a new output path.",
@@ -147,9 +151,16 @@ read_existing_results <- function(path) {
   results
 }
 
+normalize_results <- function(results) {
+  dplyr::mutate(
+    results,
+    dplyr::across(dplyr::everything(), as.character)
+  )
+}
+
 write_results <- function(results, path) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-  readr::write_csv(results, path, na = "")
+  readr::write_csv(normalize_results(results), path, na = "")
 }
 
 files <- input_files(input_path)
@@ -256,7 +267,10 @@ lookup_one <- function(animal_id, input_source) {
 
 for (index in seq_len(nrow(ids))) {
   row <- lookup_one(ids$animal_id[[index]], ids$input_source[[index]])
-  existing_results <- dplyr::bind_rows(existing_results, row)
+  existing_results <- dplyr::bind_rows(
+    normalize_results(existing_results),
+    normalize_results(row)
+  )
   write_results(existing_results, output_path)
 
   if (index < nrow(ids) && delay_seconds > 0) {
