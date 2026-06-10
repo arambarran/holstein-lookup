@@ -1,6 +1,13 @@
 #!/usr/bin/env Rscript
 
-required_packages <- c("jsonlite", "httr2", "readr", "dplyr", "purrr", "tibble")
+required_packages <- c(
+  "jsonlite",
+  "httr2",
+  "readr",
+  "dplyr",
+  "purrr",
+  "tibble"
+)
 endpoint <- "https://www.holstein.ca/en/AIS/ReadAnimalSearchGrid"
 request_headers <- c(
   "User-Agent" = paste(
@@ -46,18 +53,18 @@ if (is.null(input_path) || is.null(output_path)) {
   stop(usage, call. = FALSE)
 }
 
-check_required_package <- function(package) {
-  if (requireNamespace(package, quietly = TRUE)) {
-    return(invisible(TRUE))
-  }
-
+missing_packages <- required_packages[
+  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
+]
+if (length(missing_packages) > 0) {
   stop(
-    sprintf("Install %s first: install.packages('%s')", package, package),
+    sprintf(
+      "Install required packages first: install.packages(c(%s))",
+      paste(sprintf('"%s"', missing_packages), collapse = ", ")
+    ),
     call. = FALSE
   )
 }
-
-invisible(lapply(required_packages, check_required_package))
 
 add_request_headers <- function(request) {
   do.call(
@@ -71,7 +78,7 @@ read_response_body <- function(search_string) {
     httr2::req_url_query(animalSearchString = search_string) |>
     add_request_headers() |>
     httr2::req_timeout(60) |>
-    httr2::req_error(is_error = function(response) {
+    httr2::req_error(is_error = function(...) {
       FALSE
     }) |>
     httr2::req_perform()
@@ -162,7 +169,7 @@ lookup_one <- function(animal_id, input_source) {
     suppressWarnings(
       read_response_body(search_string)
     ),
-    error = function(error) {
+    error = function(...) {
       NA_character_
     }
   )
@@ -177,7 +184,7 @@ lookup_one <- function(animal_id, input_source) {
 
   parsed <- tryCatch(
     jsonlite::fromJSON(body, flatten = TRUE),
-    error = function(error) {
+    error = function(...) {
       NULL
     }
   )
