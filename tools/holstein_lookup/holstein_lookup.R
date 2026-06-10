@@ -129,9 +129,9 @@ if (length(files) == 0) {
   stop("No CSV files found in input directory", call. = FALSE)
 }
 
-ids <- purrr::map_dfr(files, read_ids)
-ids <- dplyr::filter(ids, !is.na(.data$animal_id), .data$animal_id != "")
-ids <- dplyr::distinct(ids, .data$animal_id, .keep_all = TRUE)
+ids <- purrr::map_dfr(files, read_ids) |>
+  dplyr::filter(!is.na(.data$animal_id), .data$animal_id != "") |>
+  dplyr::distinct(.data$animal_id, .keep_all = TRUE)
 
 if (nrow(ids) == 0) {
   stop("No animal IDs found", call. = FALSE)

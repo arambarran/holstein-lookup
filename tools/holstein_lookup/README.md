@@ -34,7 +34,7 @@ Rscript tools/holstein_lookup/holstein_lookup.R \
 ## Options
 
 - `--input`: CSV file or directory of CSV files. Required.
-- `--output`: output CSV path.
+- `--output`: output CSV path. Required.
 - `--id-column`: ID column to read, default `animal_id`.
 - `--search-prefix`: optional text to put before each ID.
 - `--limit`: process only the first N unique IDs.
