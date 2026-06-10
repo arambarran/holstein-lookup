@@ -21,7 +21,7 @@ https://www.holstein.ca/en/AIS/ReadAnimalSearchGrid?animalSearchString=COLLEGE%2
 ## Install
 
 ```r
-install.packages(c("jsonlite", "httr2"))
+install.packages(c("jsonlite", "httr2", "readr", "dplyr", "purrr", "tibble"))
 ```
 
 ## Run On Robot CSVs

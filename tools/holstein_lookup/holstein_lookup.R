@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-required_packages <- c("jsonlite", "httr2")
+required_packages <- c("jsonlite", "httr2", "readr", "dplyr", "purrr", "tibble")
 endpoint <- "https://www.holstein.ca/en/AIS/ReadAnimalSearchGrid"
 request_headers <- c(
   "User-Agent" = paste(
@@ -92,32 +92,39 @@ response_error_message <- function(body) {
   "Request failed or response was not JSON"
 }
 
-input_files <- if (dir.exists(input_path)) {
-  list.files(input_path, pattern = "\\.csv$", full.names = TRUE)
-} else {
-  input_path
-}
+input_files <- function(path) {
+  if (dir.exists(path)) {
+    return(list.files(path, pattern = "\\.csv$", full.names = TRUE))
+  }
 
-if (length(input_files) == 0) {
-  stop("No CSV files found in input directory", call. = FALSE)
+  path
 }
 
 read_ids <- function(path) {
-  data <- read.csv(path, stringsAsFactors = FALSE, colClasses = "character")
+  data <- readr::read_csv(
+    path,
+    col_types = readr::cols(.default = readr::col_character()),
+    show_col_types = FALSE
+  )
+
   if (!id_column %in% names(data)) {
     stop(sprintf("Column '%s' not found in %s", id_column, path), call. = FALSE)
   }
 
-  data.frame(
+  tibble::tibble(
     animal_id = trimws(data[[id_column]]),
-    input_source = basename(path),
-    stringsAsFactors = FALSE
+    input_source = basename(path)
   )
 }
 
-ids <- do.call(rbind, lapply(input_files, read_ids))
-ids <- ids[ids$animal_id != "" & !is.na(ids$animal_id), ]
-ids <- ids[!duplicated(ids$animal_id), ]
+files <- input_files(input_path)
+if (length(files) == 0) {
+  stop("No CSV files found in input directory", call. = FALSE)
+}
+
+ids <- purrr::map_dfr(files, read_ids)
+ids <- dplyr::filter(ids, !is.na(.data$animal_id), .data$animal_id != "")
+ids <- dplyr::distinct(ids, .data$animal_id, .keep_all = TRUE)
 
 if (nrow(ids) == 0) {
   stop("No animal IDs found", call. = FALSE)
@@ -136,15 +143,14 @@ lookup_one <- function(animal_id, input_source) {
   )
 
   output_row <- function(match_count, match_status, error_message = "") {
-    data.frame(
+    tibble::tibble(
       animal_id = animal_id,
       searched_id = search_string,
       input_source = input_source,
       match_count = match_count,
       match_status = match_status,
       error_message = error_message,
-      request_url = request_url,
-      stringsAsFactors = FALSE
+      request_url = request_url
     )
   }
 
@@ -196,29 +202,28 @@ lookup_one <- function(animal_id, input_source) {
   match_count <- nrow(matches)
   match_status <- if (match_count == 1) "unique" else "multiple"
 
-  cbind(output_row(match_count, match_status), matches)
+  dplyr::bind_cols(
+    output_row(match_count, match_status),
+    tibble::as_tibble(matches)
+  )
 }
 
-rows <- vector("list", nrow(ids))
-for (i in seq_len(nrow(ids))) {
-  rows[[i]] <- lookup_one(ids$animal_id[[i]], ids$input_source[[i]])
-  if (i < nrow(ids) && delay_seconds > 0) {
+lookup_with_delay <- function(animal_id, input_source, index) {
+  row <- lookup_one(animal_id, input_source)
+  if (index < nrow(ids) && delay_seconds > 0) {
     Sys.sleep(delay_seconds)
   }
+
+  row
 }
 
-all_columns <- unique(unlist(lapply(rows, names)))
-rows <- lapply(rows, function(row) {
-  missing_columns <- setdiff(all_columns, names(row))
-  for (column in missing_columns) {
-    row[[column]] <- NA
-  }
-  row[all_columns]
-})
-
-result <- do.call(rbind, rows)
+rows <- purrr::pmap(
+  list(ids$animal_id, ids$input_source, seq_len(nrow(ids))),
+  lookup_with_delay
+)
+result <- dplyr::bind_rows(rows)
 dir.create(dirname(output_path), recursive = TRUE, showWarnings = FALSE)
-write.csv(result, output_path, row.names = FALSE, na = "")
+readr::write_csv(result, output_path, na = "")
 
 if (verbose) {
   message("Wrote ", nrow(result), " rows to ", output_path)
