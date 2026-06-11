@@ -4,7 +4,6 @@ required_packages <- c(
   "jsonlite",
   "readr",
   "dplyr",
-  "purrr",
   "tibble"
 )
 endpoint <- "https://www.holstein.ca/en/AIS/ReadAnimalSearchGrid"
@@ -66,29 +65,23 @@ if (length(missing_packages) > 0) {
   )
 }
 
+if (!nzchar(curl_path)) {
+  stop("curl is required and was not found on PATH", call. = FALSE)
+}
+
 read_response_body <- function(request_url) {
-  if (nzchar(curl_path)) {
-    curl_headers <- paste(names(request_headers), request_headers, sep = ": ")
-    curl_args <- c(
-      "-sS",
-      "-L",
-      "--max-time",
-      "60",
-      as.vector(rbind("-H", curl_headers)),
-      request_url
-    )
-
-    return(paste(
-      system2(curl_path[[1]], shQuote(curl_args), stdout = TRUE, stderr = TRUE),
-      collapse = "\n"
-    ))
-  }
-
-  connection <- url(request_url, headers = request_headers)
-  on.exit(close(connection), add = TRUE)
+  curl_headers <- paste(names(request_headers), request_headers, sep = ": ")
+  curl_args <- c(
+    "-sS",
+    "-L",
+    "--max-time",
+    "60",
+    as.vector(rbind("-H", curl_headers)),
+    request_url
+  )
 
   paste(
-    readLines(connection, warn = FALSE),
+    system2(curl_path[[1]], shQuote(curl_args), stdout = TRUE, stderr = TRUE),
     collapse = "\n"
   )
 }
@@ -136,11 +129,18 @@ read_existing_results <- function(path) {
     return(tibble::tibble())
   }
 
-  results <- readr::read_csv(
+  readr::read_csv(
     path,
     col_types = readr::cols(.default = readr::col_character()),
     show_col_types = FALSE
   )
+}
+
+validate_existing_results <- function(results) {
+  if (ncol(results) == 0) {
+    return(results)
+  }
+
   if (!"searched_id" %in% names(results)) {
     stop(
       "Existing output is missing searched_id; use a new output path.",
@@ -151,16 +151,9 @@ read_existing_results <- function(path) {
   results
 }
 
-normalize_results <- function(results) {
-  dplyr::mutate(
-    results,
-    dplyr::across(dplyr::everything(), as.character)
-  )
-}
-
 write_results <- function(results, path) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-  readr::write_csv(normalize_results(results), path, na = "")
+  readr::write_csv(results, path, na = "")
 }
 
 files <- input_files(input_path)
@@ -168,8 +161,10 @@ if (length(files) == 0) {
   stop("No CSV files found in input directory", call. = FALSE)
 }
 
-existing_results <- read_existing_results(output_path)
-ids <- purrr::map_dfr(files, read_ids) |>
+existing_results <- validate_existing_results(
+  read_existing_results(output_path)
+)
+ids <- dplyr::bind_rows(lapply(files, read_ids)) |>
   dplyr::filter(!is.na(.data$animal_id), .data$animal_id != "") |>
   dplyr::distinct(.data$animal_id, .keep_all = TRUE)
 
@@ -216,9 +211,7 @@ lookup_one <- function(animal_id, input_source) {
   }
 
   body <- tryCatch(
-    suppressWarnings(
-      read_response_body(request_url)
-    ),
+    read_response_body(request_url),
     error = function(...) {
       NA_character_
     }
@@ -268,8 +261,8 @@ lookup_one <- function(animal_id, input_source) {
 for (index in seq_len(nrow(ids))) {
   row <- lookup_one(ids$animal_id[[index]], ids$input_source[[index]])
   existing_results <- dplyr::bind_rows(
-    normalize_results(existing_results),
-    normalize_results(row)
+    existing_results,
+    dplyr::mutate(row, dplyr::across(dplyr::everything(), as.character))
   )
   write_results(existing_results, output_path)
 
@@ -278,8 +271,6 @@ for (index in seq_len(nrow(ids))) {
   }
 }
 
-result <- existing_results
-
 if (verbose) {
-  message("Wrote ", nrow(result), " rows to ", output_path)
+  message("Wrote ", nrow(existing_results), " rows to ", output_path)
 }
