@@ -50,6 +50,8 @@ and rerun with the same output path, it skips IDs already present in
 The script prints lookup progress, reports failures as they happen, and ends
 with a `match_status` summary.
 
+Failed lookups are written to `<output>.failed.csv` and are retried on rerun.
+
 The output includes:
 
 ```text

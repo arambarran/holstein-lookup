@@ -61,6 +61,7 @@ parse_positive_integer <- function(value, name) {
 
 input_path <- get_arg("--input")
 output_path <- get_arg("--output")
+failed_output_path <- paste0(output_path, ".failed.csv")
 id_column <- get_arg("--id-column", "animal_id")
 search_prefix <- get_arg("--search-prefix", "")
 limit <- get_arg("--limit")
@@ -228,6 +229,8 @@ existing_results <- validate_existing_results(
   read_existing_results(output_path)
 )
 append_results <- nrow(existing_results) > 0
+append_failed_results <- file.exists(failed_output_path) &&
+  file.info(failed_output_path)$size > 0
 ids <- dplyr::bind_rows(lapply(files, read_ids)) |>
   dplyr::filter(!is.na(.data$animal_id), .data$animal_id != "") |>
   dplyr::distinct(.data$animal_id, .keep_all = TRUE)
@@ -327,12 +330,12 @@ for (index in seq_len(total_ids)) {
   message("[", index, "/", total_ids, "] Looking up ", ids$animal_id[[index]])
   row <- lookup_one(ids$animal_id[[index]], ids$input_source[[index]])
   row <- dplyr::mutate(row, dplyr::across(dplyr::everything(), as.character))
-  write_result(row, output_path, append_results)
-  append_results <- TRUE
 
   if (identical(row$match_status[[1]], "error")) {
     error_message <- row$error_message[[1]]
     message("Lookup failed for ", row$searched_id[[1]], ": ", error_message)
+    write_result(row, failed_output_path, append_failed_results)
+    append_failed_results <- TRUE
     if (grepl("cloudflare", error_message, ignore.case = TRUE)) {
       consecutive_cloudflare_blocks <- consecutive_cloudflare_blocks + 1L
     } else {
@@ -340,6 +343,8 @@ for (index in seq_len(total_ids)) {
     }
   } else {
     consecutive_cloudflare_blocks <- 0L
+    write_result(row, output_path, append_results)
+    append_results <- TRUE
   }
 
   if (consecutive_cloudflare_blocks >= cloudflare_block_limit) {
