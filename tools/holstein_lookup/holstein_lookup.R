@@ -94,6 +94,9 @@ if (!nzchar(curl_path)) {
 }
 
 read_response_body <- function(request_url) {
+  stderr_path <- tempfile("holstein-curl-stderr-")
+  on.exit(unlink(stderr_path), add = TRUE)
+
   curl_headers <- paste(names(request_headers), request_headers, sep = ": ")
   curl_args <- c(
     "-sS",
@@ -101,17 +104,52 @@ read_response_body <- function(request_url) {
     "--max-time",
     "60",
     as.vector(rbind("-H", curl_headers)),
+    "-w",
+    "\n%{http_code}",
     request_url
   )
 
-  paste(
-    system2(curl_path[[1]], curl_args, stdout = TRUE, stderr = TRUE),
-    collapse = "\n"
+  stdout <- system2(
+    curl_path[[1]],
+    curl_args,
+    stdout = TRUE,
+    stderr = stderr_path
   )
+  body <- paste(stdout, collapse = "\n")
+  http_code <- NA_character_
+  if (grepl("\n[0-9]{3}$", body)) {
+    http_code <- sub(".*\n([0-9]{3})$", "\\1", body)
+    body <- sub("\n[0-9]{3}$", "", body)
+  }
+
+  exit_status <- attr(stdout, "status")
+  if (is.null(exit_status)) {
+    exit_status <- 0L
+  }
+
+  stderr <- trimws(paste(readLines(stderr_path, warn = FALSE), collapse = "\n"))
+  if (exit_status != 0L) {
+    message <- sprintf("curl failed with exit status %s", exit_status)
+    if (nzchar(stderr)) {
+      message <- paste(message, stderr, sep = ": ")
+    }
+    stop(message, call. = FALSE)
+  }
+
+  if (!is.na(http_code) && http_code != "200") {
+    stop(sprintf("HTTP %s from Holstein lookup", http_code), call. = FALSE)
+  }
+
+  body
 }
 
 response_error_message <- function(body) {
   if (is.na(body)) {
+    message <- attr(body, "error_message", exact = TRUE)
+    if (!is.null(message)) {
+      return(message)
+    }
+
     return("Request failed")
   }
 
@@ -236,8 +274,10 @@ lookup_one <- function(animal_id, input_source) {
 
   body <- tryCatch(
     read_response_body(request_url),
-    error = function(...) {
-      NA_character_
+    error = function(error) {
+      body <- NA_character_
+      attr(body, "error_message") <- conditionMessage(error)
+      body
     }
   )
 
