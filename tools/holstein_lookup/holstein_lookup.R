@@ -40,12 +40,36 @@ get_arg <- function(name, default = NULL) {
   args[[index + 1]]
 }
 
+parse_non_negative_number <- function(value, name) {
+  parsed <- suppressWarnings(as.numeric(value))
+  if (is.na(parsed) || parsed < 0) {
+    stop(sprintf("%s must be a non-negative number", name), call. = FALSE)
+  }
+
+  parsed
+}
+
+parse_positive_integer <- function(value, name) {
+  parsed <- suppressWarnings(as.integer(value))
+  if (is.na(parsed) || parsed <= 0 || as.character(parsed) != value) {
+    stop(sprintf("%s must be a positive integer", name), call. = FALSE)
+  }
+
+  parsed
+}
+
 input_path <- get_arg("--input")
 output_path <- get_arg("--output")
 id_column <- get_arg("--id-column", "animal_id")
 search_prefix <- get_arg("--search-prefix", "")
 limit <- get_arg("--limit")
-delay_seconds <- as.numeric(get_arg("--delay-seconds", "2"))
+if (!is.null(limit)) {
+  limit <- parse_positive_integer(limit, "--limit")
+}
+delay_seconds <- parse_non_negative_number(
+  get_arg("--delay-seconds", "2"),
+  "--delay-seconds"
+)
 verbose <- "--verbose" %in% args
 
 if (is.null(input_path) || is.null(output_path)) {
@@ -183,7 +207,7 @@ if (nrow(ids) == 0) {
 }
 
 if (!is.null(limit)) {
-  ids <- head(ids, as.integer(limit))
+  ids <- head(ids, limit)
 }
 
 lookup_one <- function(animal_id, input_source) {
