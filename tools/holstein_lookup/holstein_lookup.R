@@ -145,6 +145,21 @@ read_response_body <- function(request_url) {
   body
 }
 
+read_response_body_with_retry <- function(request_url, tries = 3L) {
+  for (attempt in seq_len(tries)) {
+    result <- tryCatch(read_response_body(request_url), error = identity)
+    if (!inherits(result, "error")) {
+      return(result)
+    }
+
+    if (attempt < tries) {
+      Sys.sleep(2 ^ attempt)
+    }
+  }
+
+  stop(conditionMessage(result), call. = FALSE)
+}
+
 response_error_message <- function(body) {
   if (is.na(body)) {
     message <- attr(body, "error_message", exact = TRUE)
@@ -274,7 +289,7 @@ lookup_one <- function(animal_id, input_source) {
   }
 
   body <- tryCatch(
-    read_response_body(request_url),
+    read_response_body_with_retry(request_url),
     error = function(error) {
       body <- NA_character_
       attr(body, "error_message") <- conditionMessage(error)
