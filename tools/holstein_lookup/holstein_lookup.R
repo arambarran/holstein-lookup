@@ -105,7 +105,7 @@ read_response_body <- function(request_url) {
   )
 
   paste(
-    system2(curl_path[[1]], shQuote(curl_args), stdout = TRUE, stderr = TRUE),
+    system2(curl_path[[1]], curl_args, stdout = TRUE, stderr = TRUE),
     collapse = "\n"
   )
 }
