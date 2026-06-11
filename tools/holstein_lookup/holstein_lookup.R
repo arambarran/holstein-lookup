@@ -8,6 +8,7 @@ required_packages <- c(
 )
 endpoint <- "https://www.holstein.ca/en/AIS/ReadAnimalSearchGrid"
 curl_path <- Sys.which("curl")
+cloudflare_block_limit <- 3L
 request_headers <- c(
   "User-Agent" = paste(
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
@@ -268,10 +269,6 @@ lookup_one <- function(animal_id, input_source) {
     )
   }
 
-  if (verbose) {
-    message("Looking up ", search_string)
-  }
-
   body <- tryCatch(
     read_response_body(request_url),
     error = function(error) {
@@ -322,7 +319,11 @@ lookup_one <- function(animal_id, input_source) {
   )
 }
 
-for (index in seq_len(nrow(ids))) {
+consecutive_cloudflare_blocks <- 0L
+total_ids <- nrow(ids)
+
+for (index in seq_len(total_ids)) {
+  message("[", index, "/", total_ids, "] Looking up ", ids$animal_id[[index]])
   row <- lookup_one(ids$animal_id[[index]], ids$input_source[[index]])
   existing_results <- dplyr::bind_rows(
     existing_results,
@@ -330,10 +331,45 @@ for (index in seq_len(nrow(ids))) {
   )
   write_results(existing_results, output_path)
 
-  if (index < nrow(ids) && delay_seconds > 0) {
+  if (identical(row$match_status[[1]], "error")) {
+    error_message <- row$error_message[[1]]
+    message("Lookup failed for ", row$searched_id[[1]], ": ", error_message)
+    if (grepl("cloudflare", error_message, ignore.case = TRUE)) {
+      consecutive_cloudflare_blocks <- consecutive_cloudflare_blocks + 1L
+    } else {
+      consecutive_cloudflare_blocks <- 0L
+    }
+  } else {
+    consecutive_cloudflare_blocks <- 0L
+  }
+
+  if (consecutive_cloudflare_blocks >= cloudflare_block_limit) {
+    message(
+      "Stopping after ",
+      consecutive_cloudflare_blocks,
+      " consecutive Cloudflare blocks."
+    )
+    break
+  }
+
+  if (index < total_ids && delay_seconds > 0) {
     Sys.sleep(delay_seconds)
   }
 }
+
+match_status_counts <- sort(
+  table(existing_results$match_status),
+  decreasing = TRUE
+)
+message(
+  "Match status summary: ",
+  paste(
+    names(match_status_counts),
+    as.integer(match_status_counts),
+    sep = "=",
+    collapse = ", "
+  )
+)
 
 if (verbose) {
   message("Wrote ", nrow(existing_results), " rows to ", output_path)

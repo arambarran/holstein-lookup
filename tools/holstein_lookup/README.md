@@ -39,13 +39,16 @@ Rscript tools/holstein_lookup/holstein_lookup.R \
 - `--search-prefix`: optional text to put before each ID.
 - `--limit`: process only the first N unique IDs.
 - `--delay-seconds`: wait between requests, default `2`.
-- `--verbose`: print progress.
+- `--verbose`: print the final output row count and path.
 
 ## Output
 
 The output CSV is saved after each completed lookup. If the script is stopped
 and rerun with the same output path, it skips IDs already present in
 `searched_id`.
+
+The script prints lookup progress, reports failures as they happen, and ends
+with a `match_status` summary.
 
 The output includes:
 
