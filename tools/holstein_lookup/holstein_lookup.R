@@ -214,9 +214,9 @@ validate_existing_results <- function(results) {
   results
 }
 
-write_results <- function(results, path) {
+write_result <- function(row, path, append) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-  readr::write_csv(results, path, na = "")
+  readr::write_csv(row, path, na = "", append = append)
 }
 
 files <- input_files(input_path)
@@ -227,6 +227,7 @@ if (length(files) == 0) {
 existing_results <- validate_existing_results(
   read_existing_results(output_path)
 )
+append_results <- nrow(existing_results) > 0
 ids <- dplyr::bind_rows(lapply(files, read_ids)) |>
   dplyr::filter(!is.na(.data$animal_id), .data$animal_id != "") |>
   dplyr::distinct(.data$animal_id, .keep_all = TRUE)
@@ -325,11 +326,9 @@ total_ids <- nrow(ids)
 for (index in seq_len(total_ids)) {
   message("[", index, "/", total_ids, "] Looking up ", ids$animal_id[[index]])
   row <- lookup_one(ids$animal_id[[index]], ids$input_source[[index]])
-  existing_results <- dplyr::bind_rows(
-    existing_results,
-    dplyr::mutate(row, dplyr::across(dplyr::everything(), as.character))
-  )
-  write_results(existing_results, output_path)
+  row <- dplyr::mutate(row, dplyr::across(dplyr::everything(), as.character))
+  write_result(row, output_path, append_results)
+  append_results <- TRUE
 
   if (identical(row$match_status[[1]], "error")) {
     error_message <- row$error_message[[1]]
@@ -357,8 +356,9 @@ for (index in seq_len(total_ids)) {
   }
 }
 
+results <- validate_existing_results(read_existing_results(output_path))
 match_status_counts <- sort(
-  table(existing_results$match_status),
+  table(results$match_status),
   decreasing = TRUE
 )
 message(
@@ -372,5 +372,5 @@ message(
 )
 
 if (verbose) {
-  message("Wrote ", nrow(existing_results), " rows to ", output_path)
+  message("Wrote ", nrow(results), " rows to ", output_path)
 }
