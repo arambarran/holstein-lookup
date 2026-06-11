@@ -372,7 +372,7 @@ for (index in seq_len(total_ids)) {
   }
 
   if (index < total_ids && delay_seconds > 0) {
-    Sys.sleep(delay_seconds)
+    Sys.sleep(delay_seconds + runif(1, 0, 0.5))
   }
 }
 
