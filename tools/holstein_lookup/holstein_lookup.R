@@ -9,6 +9,8 @@ required_packages <- c(
 endpoint <- "https://www.holstein.ca/en/AIS/ReadAnimalSearchGrid"
 curl_path <- Sys.which("curl")
 cloudflare_block_limit <- 3L
+# Holstein's lookup endpoint is meant for its website, so these headers make
+# our request look like the same browser request the website normally sends.
 request_headers <- c(
   "User-Agent" = paste(
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
@@ -61,7 +63,6 @@ parse_positive_integer <- function(value, name) {
 
 input_path <- get_arg("--input")
 output_path <- get_arg("--output")
-failed_output_path <- paste0(output_path, ".failed.csv")
 id_column <- get_arg("--id-column", "animal_id")
 search_prefix <- get_arg("--search-prefix", "")
 limit <- get_arg("--limit")
@@ -77,6 +78,10 @@ verbose <- "--verbose" %in% args
 if (is.null(input_path) || is.null(output_path)) {
   stop(usage, call. = FALSE)
 }
+
+# Failed lookups are kept separate so a partial run can still leave a clean
+# results file for the IDs that did return usable matches.
+failed_output_path <- paste0(output_path, ".failed.csv")
 
 missing_packages <- required_packages[
   !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
@@ -96,6 +101,8 @@ if (!nzchar(curl_path)) {
 }
 
 read_response_body <- function(request_url) {
+  # curl gives us better control than R's built-in download helpers here,
+  # especially for sending the same headers the Holstein website uses.
   stderr_path <- tempfile("holstein-curl-stderr-")
   on.exit(unlink(stderr_path), add = TRUE)
 
@@ -119,6 +126,8 @@ read_response_body <- function(request_url) {
   )
   body <- paste(stdout, collapse = "\n")
   http_code <- NA_character_
+  # curl appends the HTTP status to the response so we can catch blocked or
+  # missing pages before trying to parse them as lookup data.
   if (grepl("\n[0-9]{3}$", body)) {
     http_code <- sub(".*\n([0-9]{3})$", "\\1", body)
     body <- sub("\n[0-9]{3}$", "", body)
@@ -153,6 +162,8 @@ read_response_body_with_retry <- function(request_url, tries = 3L) {
     }
 
     if (attempt < tries) {
+      # Short pauses avoid failing the whole batch because of one temporary
+      # network hiccup or a slow response from the Holstein site.
       Sys.sleep(2 ^ attempt)
     }
   }
@@ -171,6 +182,8 @@ response_error_message <- function(body) {
   }
 
   body_lower <- tolower(body)
+  # Cloudflare returns an HTML challenge page instead of animal data when it
+  # blocks us, so we flag that separately from normal lookup failures.
   if (grepl("cloudflare|just a moment|cf-mitigated", body_lower)) {
     return("Request was blocked by Cloudflare")
   }
@@ -243,6 +256,8 @@ if (length(files) == 0) {
 existing_results <- validate_existing_results(
   read_existing_results(output_path)
 )
+# These flags decide whether write_csv should add a header row. They start from
+# the files already on disk so rerunning the script appends cleanly.
 append_results <- nrow(existing_results) > 0
 append_failed_results <- file.exists(failed_output_path) &&
   file.info(failed_output_path)$size > 0
@@ -251,6 +266,8 @@ ids <- dplyr::bind_rows(lapply(files, read_ids)) |>
   dplyr::distinct(.data$animal_id, .keep_all = TRUE)
 
 if (nrow(existing_results) > 0) {
+  # Skip IDs already present in the output so interrupted runs can be resumed
+  # without asking Holstein for the same animal again.
   searched_ids <- paste0(search_prefix, ids$animal_id)
   ids <- dplyr::filter(ids, !searched_ids %in% existing_results$searched_id)
 }
@@ -291,6 +308,8 @@ lookup_one <- function(animal_id, input_source) {
   body <- tryCatch(
     read_response_body_with_retry(request_url),
     error = function(error) {
+      # Keep the failure message in the same row shape as successful lookups so
+      # the main loop can write every outcome consistently.
       body <- NA_character_
       attr(body, "error_message") <- conditionMessage(error)
       body
@@ -346,23 +365,35 @@ for (index in seq_len(total_ids)) {
   row <- lookup_one(ids$animal_id[[index]], ids$input_source[[index]])
   row <- dplyr::mutate(row, dplyr::across(dplyr::everything(), as.character))
 
-  if (identical(row$match_status[[1]], "error")) {
-    error_message <- row$error_message[[1]]
-    message("Lookup failed for ", row$searched_id[[1]], ": ", error_message)
+  lookup_failed <- identical(row$match_status[[1]], "error")
+  cloudflare_blocked <- lookup_failed &&
+    grepl("cloudflare", row$error_message[[1]], ignore.case = TRUE)
+
+  if (lookup_failed) {
+    message(
+      "Lookup failed for ",
+      row$searched_id[[1]],
+      ": ",
+      row$error_message[[1]]
+    )
     write_result(row, failed_output_path, append_failed_results)
     append_failed_results <- TRUE
-    if (grepl("cloudflare", error_message, ignore.case = TRUE)) {
-      consecutive_cloudflare_blocks <- consecutive_cloudflare_blocks + 1L
-    } else {
-      consecutive_cloudflare_blocks <- 0L
-    }
   } else {
-    consecutive_cloudflare_blocks <- 0L
     write_result(row, output_path, append_results)
     append_results <- TRUE
   }
 
+  consecutive_cloudflare_blocks <- if (cloudflare_blocked) {
+    consecutive_cloudflare_blocks + 1L
+  } else {
+    # One successful lookup or non-Cloudflare error means the site is not
+    # continuously blocking us, so reset the safety counter.
+    0L
+  }
+
   if (consecutive_cloudflare_blocks >= cloudflare_block_limit) {
+    # Repeated Cloudflare blocks usually mean continuing will only generate more
+    # failures, so stop and let the existing partial results stay saved.
     message(
       "Stopping after ",
       consecutive_cloudflare_blocks,
@@ -372,6 +403,8 @@ for (index in seq_len(total_ids)) {
   }
 
   if (index < total_ids && delay_seconds > 0) {
+    # A small random delay is friendlier to the Holstein site and avoids sending
+    # every request on an exact, machine-like schedule.
     Sys.sleep(delay_seconds + runif(1, 0, 0.5))
   }
 }
