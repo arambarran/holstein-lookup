@@ -120,7 +120,7 @@ read_response_body <- function(request_url) {
 
   stdout <- system2(
     curl_path[[1]],
-    curl_args,
+    shQuote(curl_args),
     stdout = TRUE,
     stderr = stderr_path
   )
