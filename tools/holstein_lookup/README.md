@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../../docs/assets/partners.svg" alt="CGIL × Net-Zero Dairy Genome Project" width="440" />
+  <img src="../../docs/assets/cgil.svg" alt="Centre for Genetic Improvement of Livestock" width="210" />
 </p>
 
 <h1 align="center">Holstein Animal Lookup</h1>
@@ -18,14 +18,15 @@
   <a href="#quick-start">Quick start</a> ·
   <a href="#options">Options</a> ·
   <a href="#output">Output</a> ·
-  <a href="../../README.md">Herdstream</a>
+  <a href="../../README.md">Repository</a>
 </p>
 
 ---
 
 Look up [Holstein Canada](https://www.holstein.ca/) animal records from one CSV
-or a directory of CSV files. The tool reads your ID column, ignores other columns,
-and searches each unique ID once. It runs independently of the Herdstream database.
+or a directory of CSV files, for any herd or project. The tool reads your ID column,
+ignores other columns, and searches each unique ID once. It runs as a standalone
+script with no database required.
 
 ## Quick start
 
