@@ -5,7 +5,7 @@ Look up Holstein Canada animal records from a CSV of animal IDs.
 ## Install
 
 ```r
-install.packages(c("jsonlite", "readr", "dplyr", "tibble"))
+install.packages(c("jsonlite", "readr", "dplyr", "tibble", "xml2"))
 ```
 
 ## Input
@@ -58,7 +58,8 @@ The output includes:
 animal_id,searched_id,input_source,match_count,match_status,error_message,request_url
 ```
 
-It also appends whatever fields Holstein returns.
+It also appends whatever fields Holstein returns, plus `birth_codes` (e.g. `ET`)
+and `genotyping_code` (e.g. `GTSM`), read from each matched animal's detail page.
 
 - `unique`: exactly one match.
 - `multiple`: more than one match.

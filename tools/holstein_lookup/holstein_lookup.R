@@ -4,7 +4,8 @@ required_packages <- c(
   "jsonlite",
   "readr",
   "dplyr",
-  "tibble"
+  "tibble",
+  "xml2"
 )
 endpoint <- "https://www.holstein.ca/en/AIS/ReadAnimalSearchGrid"
 curl_path <- Sys.which("curl")
@@ -191,6 +192,36 @@ response_error_message <- function(body) {
   "Request failed or response was not JSON"
 }
 
+lookup_animal_codes <- function(animal) {
+  id_column <- match("animalid", tolower(names(animal)))
+  if (is.na(id_column) || is.na(animal[[id_column]][[1]])) {
+    stop("Search result is missing AnimalId", call. = FALSE)
+  }
+  detail_url <- paste0(
+    "https://www.holstein.ca/en/AIS/AIS?animalId=", animal[[id_column]][[1]]
+  )
+  if (delay_seconds > 0) Sys.sleep(delay_seconds)
+  document <- xml2::read_html(read_response_body_with_retry(detail_url))
+  nodes <- xml2::xml_find_all(
+    document, "//body//text()[not(ancestor::script) and not(ancestor::style)]"
+  )
+  text <- gsub("[[:space:]\u00a0]+", " ", paste(xml2::xml_text(nodes), collapse = " "))
+  # Exclude the animal's name and its relatives' codes.
+  header <- regmatches(text, regexpr(
+    "Registration Status\\s*:.*?(?=\\b(?:Sire|Dam)\\s*:)", text, perl = TRUE
+  ))
+  if (length(header) == 0) {
+    stop("Animal detail header was not found", call. = FALSE)
+  }
+  tokens <- strsplit(header, " ")[[1]]
+  birth <- unique(tokens[tokens %in% c("ET", "ETA", "ETM", "IVF", "MB")])
+  genotyping <- unique(tokens[tokens %in% c("GT", "GTM", "GTS", "GTSM")])
+  list(
+    birth_codes = paste(birth, collapse = " "),
+    genotyping_code = paste(genotyping, collapse = " ")
+  )
+}
+
 input_files <- function(path) {
   if (dir.exists(path)) {
     return(list.files(path, pattern = "\\.csv$", full.names = TRUE))
@@ -233,9 +264,9 @@ validate_existing_results <- function(results) {
     return(results)
   }
 
-  if (!"searched_id" %in% names(results)) {
+  if (!all(c("searched_id", "birth_codes", "genotyping_code") %in% names(results))) {
     stop(
-      "Existing output is missing searched_id; use a new output path.",
+      "Existing output is missing required columns; use a new output path.",
       call. = FALSE
     )
   }
@@ -301,7 +332,9 @@ lookup_one <- function(animal_id, input_source) {
       match_count = match_count,
       match_status = match_status,
       error_message = error_message,
-      request_url = request_url
+      request_url = request_url,
+      birth_codes = "",
+      genotyping_code = ""
     )
   }
 
@@ -351,10 +384,19 @@ lookup_one <- function(animal_id, input_source) {
   match_count <- nrow(matches)
   match_status <- if (match_count == 1) "unique" else "multiple"
 
-  dplyr::bind_cols(
+  rows <- dplyr::bind_cols(
     output_row(match_count, match_status),
     tibble::as_tibble(matches)
   )
+  tryCatch({
+    for (index in seq_len(match_count)) {
+      codes <- lookup_animal_codes(matches[index, , drop = FALSE])
+      rows[index, names(codes)] <- codes
+    }
+    rows
+  }, error = function(error) {
+    output_row(match_count, "error", conditionMessage(error))
+  })
 }
 
 consecutive_cloudflare_blocks <- 0L
