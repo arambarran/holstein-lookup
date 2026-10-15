@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="www/cgil.gif" alt="CGIL" width="100" />
+  <img src="../../docs/assets/cgil.svg" alt="CGIL" width="180" />
 </p>
 
 <h1 align="center">Holstein Animal Lookup</h1>
