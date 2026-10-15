@@ -1,5 +1,14 @@
 # Page structure. Reactive content is supplied by server.R and result_views.R.
 
+asset_url <- function(filename) {
+  path <- file.path("www", filename)
+  if (!file.exists(path)) {
+    stop("Missing app asset: ", path, call. = FALSE)
+  }
+  # A content hash invalidates cached CSS/JS whenever a deployment changes it.
+  paste0(filename, "?v=", unname(tools::md5sum(path)))
+}
+
 lookup_header <- function() {
   tags$header(
     class = "app-header",
@@ -24,7 +33,8 @@ lookup_icon <- function(name) {
     stop("Unknown lookup icon")
   )
   tags$svg(
-    class = "lookup-icon", viewBox = "0 0 24 24", fill = "none",
+    class = "lookup-icon", width = "28", height = "28",
+    viewBox = "0 0 24 24", fill = "none",
     stroke = "currentColor", `stroke-width` = "1.5",
     `stroke-linecap` = "round", `stroke-linejoin` = "round",
     `aria-hidden` = "true", focusable = "false",
@@ -183,8 +193,8 @@ lookup_ui <- function() {
       border_radius = "0.375rem"
     ),
     tags$head(
-      tags$link(rel = "stylesheet", href = "app.css"),
-      tags$script(src = "app.js")
+      tags$link(rel = "stylesheet", href = asset_url("app.css")),
+      tags$script(src = asset_url("app.js"))
     ),
     lookup_header(),
     div(

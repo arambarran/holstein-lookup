@@ -25,6 +25,17 @@ async function checkBrowser() {
   });
   try {
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    // Old, unversioned URLs can still be cached after an app upgrade.
+    // Serve stale content at those URLs; current HTML must request new URLs.
+    let staleAssets = 0;
+    await page.route(/\/app\.(css|js)$/, route => {
+      staleAssets += 1;
+      const css = route.request().url().endsWith('.css');
+      return route.fulfill({
+        contentType: css ? 'text/css' : 'application/javascript',
+        body: css ? '.app-header { display: grid; grid-template-columns: 110px 1fr 110px; }' : ''
+      });
+    });
     const errors = [];
     let uploads = 0;
     page.on('pageerror', error => errors.push(error.message));
@@ -38,6 +49,25 @@ async function checkBrowser() {
     await expect(page.locator('#run')).toBeDisabled();
     await expect(page.locator('.btn-file')).toHaveText('Choose file');
     await expect(page.locator('#id_column')).toBeDisabled();
+    expect(staleAssets).toBe(0);
+    await expect(page.locator('link[href^="app.css"]')).toHaveAttribute('href', /\?v=[a-f0-9]{32}$/);
+    await expect(page.locator('script[src^="app.js"]')).toHaveAttribute('src', /\?v=[a-f0-9]{32}$/);
+    await expect(page.locator('.header-inner')).toHaveCSS('display', 'grid');
+    const title = await page.locator('h1').boundingBox();
+    expect(Math.abs(title.x + title.width / 2 - 720)).toBeLessThan(2);
+    for (const icon of await page.locator('.lookup-icon').all()) {
+      const bounds = await icon.boundingBox();
+      expect(bounds.width).toBeLessThanOrEqual(32);
+      expect(bounds.height).toBeLessThanOrEqual(32);
+    }
+    // Icons retain their intrinsic size even if the custom stylesheet fails.
+    await page.evaluate(() => { document.querySelector('link[href^="app.css"]').sheet.disabled = true; });
+    for (const icon of await page.locator('.lookup-icon').all()) {
+      const bounds = await icon.boundingBox();
+      expect(bounds.width).toBe(28);
+      expect(bounds.height).toBe(28);
+    }
+    await page.evaluate(() => { document.querySelector('link[href^="app.css"]').sheet.disabled = false; });
     await page.screenshot({ path: '/tmp/holstein-empty.png', fullPage: true });
 
     // Keyboard access to the native file picker.
