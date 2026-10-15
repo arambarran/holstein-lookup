@@ -13,6 +13,7 @@ stopifnot(grepl("1 of 2 IDs processed in this run", progress, fixed = TRUE))
 stopifnot(grepl("Stop lookup", progress, fixed = TRUE))
 
 shiny::testServer(app$server, {
+  stopifnot(!can_run())
   session$setInputs(example = 1)
   stopifnot(nrow(state$rows) == 7, state$is_example, !state$running)
 
@@ -34,12 +35,17 @@ shiny::testServer(app$server, {
   ))
   session$setInputs(id_column = "tag", prefix = "COLLEGE")
   stopifnot(identical(prepared_ids()$animal_id, c("004464", "2034")))
+  stopifnot(can_run())
+  state$running <- TRUE
+  stopifnot(!can_run())
+  state$running <- FALSE
 
   # A bad upload clears the previous input, preventing accidental reuse.
   session$setInputs(csv = data.frame(
     name = "invalid.txt", datapath = csv, size = 10, type = "text/plain"
   ))
   stopifnot(is.null(state$upload), !is.null(state$upload_error))
+  stopifnot(!can_run())
   unlink(csv)
 })
 cat("Shiny session checks passed.\n")

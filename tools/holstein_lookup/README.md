@@ -58,6 +58,28 @@ The app runs locally by default. A shared deployment needs an R-capable Shiny ho
 it cannot run as a static website. Holstein access restrictions and request delays
 still apply. Concurrent sessions make independent requests.
 
+### Running on signal
+
+The R installation on `signal` needs the Fortran runtime from MATLAB on its
+library path. In the server terminal:
+
+```bash
+cd /data/cgil/ndgp/6_Akshay/cgil
+export LD_LIBRARY_PATH="/usr/local/MATLAB_Runtime/R2023b/sys/os/glnxa64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LC_ALL=C
+Rscript -e 'shiny::runApp("tools/holstein_lookup", host="127.0.0.1", port=3838, launch.browser=FALSE)'
+```
+
+Wait for `Listening on http://127.0.0.1:3838`. In a separate terminal on your laptop:
+
+```bash
+ssh -N -o ExitOnForwardFailure=yes -L 3838:127.0.0.1:3838 arambarr@signal.aps.uoguelph.ca
+```
+
+Open `http://127.0.0.1:3838` on the laptop and keep both terminals running.
+Restart the app after pulling changes. If R exits with an error, resolve that
+error before opening the browser; the tunnel needs a running app to connect to.
+
 ### App checks
 
 These checks use local fixtures and do not contact Holstein:
@@ -66,6 +88,19 @@ These checks use local fixtures and do not contact Holstein:
 Rscript -e 'install.packages("testthat", repos = "https://cloud.r-project.org")'
 Rscript tools/holstein_lookup/tests/run.R
 ```
+
+The suite includes rendering under the server's `C` locale. Browser checks also
+cover single-upload drag and drop, invalid files, keyboard upload, filtering,
+column selection, sorted exports, mobile layout, and session isolation. With
+Playwright and Chromium available, start the app on port 4876 and run:
+
+```bash
+node tools/holstein_lookup/tests/browser.cjs
+```
+
+Set `LOOKUP_URL` to use another port, `PLAYWRIGHT_MODULE` to use an existing
+Playwright installation, or `CHROMIUM_PATH` to use a specific browser executable.
+Browser checks use fictional records and do not make live Holstein requests.
 
 ## Code structure
 

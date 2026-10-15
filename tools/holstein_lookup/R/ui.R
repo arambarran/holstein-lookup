@@ -3,31 +3,52 @@
 lookup_header <- function() {
   tags$header(
     class = "app-header",
-    tags$a(
-      href = "https://cgil.uoguelph.ca/",
-      target = "_blank",
-      rel = "noopener noreferrer",
-      class = "logo-link",
-      tags$img(src = "cgil.gif", alt = "CGIL", class = "cgil-logo")
-    ),
-    h1("Holstein Animal Lookup")
+    div(
+      class = "header-inner",
+      tags$a(
+        href = "https://cgil.uoguelph.ca/",
+        target = "_blank",
+        rel = "noopener noreferrer",
+        class = "logo-link",
+        tags$img(src = "cgil.gif", alt = "CGIL", class = "cgil-logo")
+      ),
+      h1("Holstein Animal Lookup")
+    )
+  )
+}
+
+lookup_icon <- function(name) {
+  paths <- switch(name,
+    upload = c("M12 16V4m-4 4 4-4 4 4", "M4 16v4h16v-4"),
+    table = c("M4 4h16v16H4z", "M4 9h16M9 9v11M4 14h16"),
+    stop("Unknown lookup icon")
+  )
+  tags$svg(
+    class = "lookup-icon", viewBox = "0 0 24 24", fill = "none",
+    stroke = "currentColor", `stroke-width` = "1.5",
+    `stroke-linecap` = "round", `stroke-linejoin` = "round",
+    `aria-hidden` = "true", focusable = "false",
+    lapply(paths, function(path) tags$path(d = path))
   )
 }
 
 upload_controls <- function() {
   div(
     class = "input-field upload-field",
-    tags$label(`for` = "csv", class = "control-label", "CSV file"),
     div(
       class = "upload-area",
+      lookup_icon("upload"),
+      tags$label(`for` = "csv", class = "upload-title", "Drop a CSV file here"),
+      p(class = "upload-hint", "One file, up to 25 MB. IDs are kept as text."),
       fileInput(
         "csv", NULL,
         accept = c(".csv", "text/csv"),
-        buttonLabel = "Browse…",
-        placeholder = "Drop a CSV file here"
-      )
+        buttonLabel = "Choose file",
+        placeholder = "No file selected"
+      ),
+      div(id = "upload-error", class = "inline-error", role = "alert")
     ),
-    span(class = "field-help", "Maximum 25 MB. IDs are read as text.")
+    uiOutput("upload_info")
   )
 }
 
@@ -35,8 +56,8 @@ search_controls <- function() {
   tagList(
     div(
       class = "input-field",
-      selectInput("id_column", "Animal ID column", choices = character()),
-      span(class = "field-help", "Select the column containing your IDs.")
+      selectInput("id_column", "Animal ID column", choices = c("Upload a CSV first" = "")),
+      span(class = "field-help", "Select the column containing the animal IDs.")
     ),
     div(
       class = "input-field",
@@ -70,18 +91,23 @@ lookup_form <- function() {
       id = "setup-fields",
       div(
         class = "section-heading",
-        h2(id = "input-heading", "Input"),
+        div(class = "section-title", span(class = "step-number", "1"),
+            h2(id = "input-heading", "Prepare lookup")),
         div(
           class = "utility-links",
           downloadLink("template", "CSV template"),
           actionLink("example", "Example data")
         )
       ),
-      div(class = "lookup-inputs", upload_controls(), search_controls()),
       div(
-        class = "input-summary",
-        uiOutput("upload_info"),
-        uiOutput("search_preview")
+        class = "lookup-inputs",
+        upload_controls(),
+        div(
+          class = "search-settings",
+          div(class = "search-fields", search_controls()),
+          uiOutput("search_preview"),
+          advanced_controls()
+        )
       ),
       conditionalPanel(
         "output.has_upload",
@@ -93,8 +119,8 @@ lookup_form <- function() {
       ),
       div(
         class = "run-controls",
-        advanced_controls(),
-        actionButton("run", "Start lookup", class = "btn-primary")
+        span(class = "run-help", "Review your IDs and settings before starting."),
+        actionButton("run", "Start lookup", class = "btn-primary", disabled = "disabled")
       )
     )
   )
@@ -131,7 +157,11 @@ results_section <- function() {
     `aria-labelledby` = "results-heading",
     div(
       class = "section-heading results-heading",
-      div(h2(id = "results-heading", "Results"), uiOutput("results_caption")),
+      div(
+        div(class = "section-title", span(class = "step-number", "2"),
+            h2(id = "results-heading", "Review results")),
+        uiOutput("results_caption")
+      ),
       uiOutput("dataset_badge")
     ),
     conditionalPanel("output.has_results", uiOutput("stats"), result_controls()),
@@ -146,19 +176,19 @@ lookup_ui <- function() {
     title = "Holstein Animal Lookup",
     theme = bslib::bs_theme(
       version = 5,
-      bg = "#ffffff",
+      bg = "#f6f7fa",
       fg = "#202b3d",
       primary = "#10196b",
       base_font = "system-ui",
-      border_radius = "0.25rem"
+      border_radius = "0.375rem"
     ),
     tags$head(
       tags$link(rel = "stylesheet", href = "app.css"),
       tags$script(src = "app.js")
     ),
+    lookup_header(),
     div(
       class = "app-shell",
-      lookup_header(),
       tags$main(lookup_form(), uiOutput("progress_panel"), results_section()),
       tags$footer(
         class = "app-footer",

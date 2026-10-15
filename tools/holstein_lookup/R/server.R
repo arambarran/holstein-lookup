@@ -26,6 +26,13 @@ create_lookup_server <- function(app_directory, start_worker = start_lookup_work
       prepare_ids(state$upload, input$id_column, input$csv$name)
     })
 
+    can_run <- reactive({
+      if (state$running || is.null(state$upload)) {
+        return(FALSE)
+      }
+      tryCatch(nrow(prepared_ids()) > 0, error = function(error) FALSE)
+    })
+
     collect_completed <- function() {
       snapshot <- job$read_new()
       if (nrow(snapshot$rows) > 0) {
@@ -50,7 +57,9 @@ create_lookup_server <- function(app_directory, start_worker = start_lookup_work
     }
 
     observe({
-      session$sendCustomMessage("lookupBusy", list(busy = state$running))
+      session$sendCustomMessage("lookupBusy", list(
+        busy = state$running, canRun = can_run(), hasUpload = !is.null(state$upload)
+      ))
     })
 
     observeEvent(input$csv, {

@@ -73,7 +73,7 @@ export_controls <- function(row_count, has_columns) {
   div(
     class = "export-bar",
     div(
-      strong(sprintf("%s records in this view", row_count)),
+      strong(sprintf("%s %s in this view", row_count, if (row_count == 1) "record" else "records")),
       p("View export includes all filtered rows and visible columns.")
     ),
     div(
@@ -161,7 +161,7 @@ register_result_outputs <- function(input, output, session, state) {
     } else {
       "Upload a CSV, select the ID column, and start a lookup."
     }
-    div(class = "empty-state", h3(title), p(instruction))
+    div(class = "empty-state", lookup_icon("table"), h3(title), p(instruction))
   })
   output$exports <- renderUI({
     req(nrow(state$rows) > 0)

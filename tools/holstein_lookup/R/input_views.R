@@ -14,8 +14,8 @@ register_input_outputs <- function(input, output, state, prepared_ids) {
       ids <- prepared_ids()
       div(
         class = "upload-info",
-        sprintf("%s rows · %s unique IDs", nrow(state$upload), nrow(ids)),
-        span(" · Blank IDs skipped; duplicates searched once.")
+        strong(sprintf("%s rows / %s unique IDs", nrow(state$upload), nrow(ids))),
+        span("Blank IDs skipped; duplicates searched once.")
       )
     }, error = function(error) {
       div(class = "inline-error", conditionMessage(error))
@@ -26,14 +26,16 @@ register_input_outputs <- function(input, output, state, prepared_ids) {
     head(state$upload, 5)
   }, striped = TRUE, spacing = "xs")
   output$search_preview <- renderUI({
-    req(state$upload)
-    id <- tryCatch(prepared_ids()$animal_id[[1]], error = function(error) NULL)
+    id <- tryCatch({
+      req(state$upload)
+      prepared_ids()$animal_id[[1]]
+    }, error = function(error) NULL)
     if (is.null(id)) {
-      return(NULL)
+      return(div(class = "search-preview is-empty", "A search preview will appear after you select your IDs."))
     }
     div(
       class = "search-preview",
-      span("Search preview: "),
+      span("First search"),
       code(paste0(normalize_prefix(input$prefix), id))
     )
   })
