@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../../docs/assets/partners.svg" alt="CGIL × Net-Zero Dairy Genome Project" width="440" />
+  <img src="www/cgil.gif" alt="CGIL" width="100" />
 </p>
 
 <h1 align="center">Holstein Animal Lookup</h1>
@@ -11,7 +11,6 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/R-4.1%2B-276DC3?logo=r&amp;logoColor=white" alt="R 4.1+" />
-  <img src="https://img.shields.io/badge/Shiny_deployment-In_progress-AE8900" alt="Shiny deployment: in progress" />
 </p>
 
 <p align="center">
@@ -83,7 +82,9 @@ filename to refresh previous results.
 
 ## Shiny app
 
-**Shared Shiny deployment is a work in progress.** To run the app yourself:
+> [!NOTE]
+> Shared Shiny deployment is a work in progress. You can run the app yourself
+> using the instructions below.
 
 ```bash
 Rscript -e 'shiny::runApp("tools/holstein_lookup", host="127.0.0.1", port=3838, launch.browser=FALSE)'
