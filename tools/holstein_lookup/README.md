@@ -1,7 +1,28 @@
-# Holstein Animal Lookup
+<p align="center">
+  <img src="../../docs/assets/partners.svg" alt="CGIL × Net-Zero Dairy Genome Project" width="440" />
+</p>
 
-Look up animal IDs on Holstein Canada and export records, birth codes, and
-genotyping codes to CSV. Use the command-line tool or the Shiny app.
+<h1 align="center">Holstein Animal Lookup</h1>
+
+<p align="center">
+  Animal records, birth codes, and genotyping codes from <a href="https://www.holstein.ca/">Holstein Canada</a>.<br />
+  Look up IDs and export CSV results using the command-line tool or Shiny app.
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/R-4.1%2B-276DC3?logo=r&amp;logoColor=white" alt="R 4.1+" />
+  <img src="https://img.shields.io/badge/Shiny_deployment-In_progress-AE8900" alt="Shiny deployment: in progress" />
+</p>
+
+<p align="center">
+  <a href="#setup">Setup</a> ·
+  <a href="#command-line">Command line</a> ·
+  <a href="#shiny-app">Shiny app</a> ·
+  <a href="#reading-results">Results</a> ·
+  <a href="../../README.md">Herdstream</a>
+</p>
+
+---
 
 ## Setup
 
