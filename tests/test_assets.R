@@ -26,3 +26,6 @@ local({
   }
 })
 cat("Asset versioning and fallback icon dimensions passed.\n")
+
+# Exercise normal Shiny directory startup, including automatic helper loading.
+stopifnot(inherits(shiny::shinyAppDir("."), "shiny.appobj"))
