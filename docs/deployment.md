@@ -15,7 +15,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
 ```
 
-In a fresh R terminal, install the packages listed in the README, plus the
+In a fresh R terminal, install the packages in the [installation guide](setup.md), plus the
 publishing package:
 
 ```r
