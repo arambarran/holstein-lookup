@@ -75,6 +75,7 @@ filename to refresh previous results.
 
 Coat colour is shown separately from birth and genotyping codes. The `Colour`
 column expands `B&W` to **Black & white** and `R&W` to **Red & white**.
+`BirthDate` uses `YYYY-MM-DD` in the app and downloaded CSVs.
 
 `match_status` is `unique`, `multiple`, `not_found`, or `error`. Multiple matches
 produce separate rows. A blank birth or genotyping code means no recognized code

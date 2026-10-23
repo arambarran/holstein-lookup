@@ -7,6 +7,29 @@ colours <- parse_search_response(paste0(
 ))
 stopifnot(identical(colours$Colour, c("Black & white", "Red & white", "OTHER", "", NA_character_)))
 
+# Dates are calendar dates, independent of the machine's timezone and locale.
+local({
+  original_tz <- Sys.getenv("TZ", unset = NA_character_)
+  on.exit(if (is.na(original_tz)) Sys.unsetenv("TZ") else Sys.setenv(TZ = original_tz))
+  body <- paste0(
+    '{"Data":[',
+    '{"BirthDate":"/Date(1588219200000)/","DisplayBirthDate":"30 Apr 2020"},',
+    '{"BirthDate":"/Date(1198818000000)/","DisplayBirthDate":"28 Dec 2007"},',
+    '{"BirthDate":"/Date(-86400000)/"},',
+    '{"BirthDate":"/Date(1582934400000+0000)/"},',
+    '{"BirthDate":null},{"BirthDate":""},{"BirthDate":"2020-04-30"},',
+    '{"BirthDate":"/Date(1588294800000)/","DisplayBirthDate":"30 Apr 2020"}]}'
+  )
+  expected <- c("2020-04-30", "2007-12-28", "1969-12-31", "2020-02-29",
+                NA_character_, "", "2020-04-30", "2020-04-30")
+  for (timezone in c("UTC", "America/Los_Angeles", "Pacific/Auckland")) {
+    Sys.setenv(TZ = timezone)
+    dates <- parse_search_response(body)
+    stopifnot(identical(dates$BirthDate, expected))
+    stopifnot(dates$DisplayBirthDate[[1]] == "30 Apr 2020")
+  }
+})
+
 fixture_response <- function(url) {
   if (grepl("ReadAnimalSearchGrid", url)) {
     return('{"Data":[{"AnimalId":123,"Name":"TEST ANIMAL"}]}')

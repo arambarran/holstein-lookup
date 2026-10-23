@@ -85,6 +85,30 @@ read_response_body_with_retry <- function(request_url, read_response, tries = 3L
   stop(result)
 }
 
+format_birth_dates <- function(values, display_dates = rep(NA_character_, length(values))) {
+  values <- as.character(values)
+  pattern <- "^/Date\\((-?[0-9]+)([+-][0-9]{4})?\\)/$"
+  serialized <- !is.na(values) & grepl(pattern, values)
+  milliseconds <- as.numeric(sub(pattern, "\\1", values[serialized]))
+  values[serialized] <- format(
+    as.POSIXct(milliseconds / 1000, origin = "1970-01-01", tz = "UTC"),
+    "%Y-%m-%d", tz = "UTC"
+  )
+
+  # Prefer Holstein's calendar date when present, avoiding timezone shifts.
+  # Numeric months keep this independent of the server's language settings.
+  displayed <- vapply(strsplit(trimws(as.character(display_dates)), "[[:space:]]+"), function(parts) {
+    if (length(parts) != 3 || !parts[[2]] %in% month.abb) {
+      return(NA_character_)
+    }
+    date <- paste(parts[[3]], match(parts[[2]], month.abb), parts[[1]], sep = "-")
+    as.character(as.Date(date, format = "%Y-%m-%d"))
+  }, character(1))
+  available <- !is.na(displayed)
+  values[available] <- displayed[available]
+  values
+}
+
 parse_search_response <- function(body) {
   if (grepl("cloudflare|just a moment|cf-mitigated", tolower(body))) {
     stop("Request was blocked by Cloudflare", call. = FALSE)
@@ -104,6 +128,10 @@ parse_search_response <- function(body) {
     colours <- c("B&W" = "Black & white", "R&W" = "Red & white")
     known <- rows$Colour %in% names(colours)
     rows$Colour[known] <- unname(colours[rows$Colour[known]])
+  }
+  if ("BirthDate" %in% names(rows)) {
+    display_dates <- if ("DisplayBirthDate" %in% names(rows)) rows$DisplayBirthDate else rep(NA_character_, nrow(rows))
+    rows$BirthDate <- format_birth_dates(rows$BirthDate, display_dates)
   }
   rows
 }
