@@ -1,7 +1,7 @@
 # Asset URLs must change with their contents, including on an existing browser.
 local({
   app <- new.env(parent = globalenv())
-  source("tools/holstein_lookup/app.R", local = app, chdir = TRUE)
+  source("app.R", local = app, chdir = TRUE)
   directory <- tempfile("lookup-assets-")
   dir.create(file.path(directory, "www"), recursive = TRUE)
   original_directory <- setwd(directory)

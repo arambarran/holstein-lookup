@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="../../docs/assets/cgil.svg" alt="CGIL" width="180" />
+  <img src="docs/assets/cgil.svg" alt="CGIL" width="180" />
 </p>
 
 <h1 align="center">Holstein Animal Lookup</h1>
@@ -18,7 +18,7 @@
   <a href="#command-line">Command line</a> ·
   <a href="#shiny-app">Shiny app</a> ·
   <a href="#reading-results">Results</a> ·
-  <a href="../../README.md">Herdstream</a>
+  <a href="https://github.com/arambarran/cgil">Herdstream</a>
 </p>
 
 ---
@@ -64,7 +64,7 @@ HOUSAM138974820
 Run the lookup:
 
 ```bash
-Rscript tools/holstein_lookup/holstein_lookup.R \
+Rscript holstein_lookup.R \
   --input input.csv \
   --output results.csv \
   --verbose
@@ -87,7 +87,7 @@ filename to refresh previous results.
 > using the instructions below.
 
 ```bash
-Rscript -e 'shiny::runApp("tools/holstein_lookup", host="127.0.0.1", port=3838, launch.browser=FALSE)'
+Rscript -e 'shiny::runApp(".", host="127.0.0.1", port=3838, launch.browser=FALSE)'
 ```
 
 Open <http://127.0.0.1:3838> on the same machine. If running on signal, keep the
@@ -114,3 +114,14 @@ was extracted; it does not confirm the animal's reproductive or testing history.
 Live lookups have worked from signal; other networks may receive HTTP 403 from
 Holstein Canada. Both interfaces use the same lookup client. Check `error_message`
 when a lookup fails.
+
+## Tests
+
+Run the offline R checks from the repository root:
+
+```bash
+Rscript tests/run.R
+```
+
+With the app running locally and `@playwright/test` installed, run the browser
+checks with `node tests/browser.cjs`.

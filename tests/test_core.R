@@ -1,4 +1,4 @@
-source("tools/holstein_lookup/R/lookup.R")
+source("R/lookup.R")
 
 fixture_response <- function(url) {
   if (grepl("ReadAnimalSearchGrid", url)) {

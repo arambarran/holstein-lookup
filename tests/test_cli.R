@@ -1,6 +1,6 @@
-source("tools/holstein_lookup/R/data.R")
-source("tools/holstein_lookup/R/jobs.R")
-source("tools/holstein_lookup/R/cli.R")
+source("R/data.R")
+source("R/jobs.R")
+source("R/cli.R")
 
 directory <- tempfile("holstein-cli-test-")
 dir.create(directory)

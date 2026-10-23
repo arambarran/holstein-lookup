@@ -1,6 +1,6 @@
 # Pure data contracts used by both the app and command line.
-source("tools/holstein_lookup/R/data.R")
-source("tools/holstein_lookup/R/example.R")
+source("R/data.R")
+source("R/example.R")
 
 csv <- tempfile(fileext = ".csv")
 writeLines(c("tag,note", "004464,a", "004464,b", ",c", "2034,d"), csv)

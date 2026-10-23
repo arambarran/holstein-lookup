@@ -1,6 +1,6 @@
 # Exercise session behavior without a browser or external HTTP requests.
 app <- new.env(parent = globalenv())
-source("tools/holstein_lookup/app.R", local = app, chdir = TRUE)
+source("app.R", local = app, chdir = TRUE)
 
 # Render an active batch: example data alone does not exercise progress text.
 progress <- htmltools::renderTags(app$progress_panel(list(

@@ -1,0 +1,19 @@
+# Local R state
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+# Local configuration and data
+.env
+*.csv
+*.csv.gz
+*.log
+
+# Browser test dependencies and output
+node_modules/
+playwright-report/
+test-results/
+
+# OS files
+.DS_Store

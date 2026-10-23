@@ -1,4 +1,4 @@
-# From the repository root: shiny::runApp("tools/holstein_lookup")
+# From the repository root: shiny::runApp(".")
 source("R/dependencies.R", local = TRUE, encoding = "UTF-8")
 check_dependencies(c(
   "shiny", "bslib", "reactable", "callr", "jsonlite", "readr", "dplyr", "tibble", "xml2"

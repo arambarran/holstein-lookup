@@ -1,7 +1,7 @@
 # Command-line configuration and batch execution. Sourcing this file does not run it.
 
 CLI_USAGE <- paste(
-  "Usage: Rscript tools/holstein_lookup/holstein_lookup.R",
+  "Usage: Rscript holstein_lookup.R",
   "--input <csv-file-or-directory> --output <output-csv>",
   "[--id-column animal_id] [--search-prefix 'COLLEGE ']",
   "[--limit N] [--delay-seconds 2] [--verbose]"

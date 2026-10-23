@@ -1,9 +1,9 @@
 # Use a real background process with a local lookup fixture, never Holstein.
 app <- new.env(parent = globalenv())
-source("tools/holstein_lookup/app.R", local = app, chdir = TRUE)
+source("app.R", local = app, chdir = TRUE)
 fixture <- tempfile("holstein-worker-fixture-")
 dir.create(file.path(fixture, "R"), recursive = TRUE)
-file.copy("tools/holstein_lookup/R/jobs.R", file.path(fixture, "R", "jobs.R"))
+file.copy("R/jobs.R", file.path(fixture, "R", "jobs.R"))
 marker <- file.path(fixture, "retried")
 writeLines(c(
   paste0("marker <- ", deparse(marker)),

@@ -1,5 +1,5 @@
-source("tools/holstein_lookup/R/data.R")
-source("tools/holstein_lookup/R/jobs.R")
+source("R/data.R")
+source("R/jobs.R")
 
 ids <- data.frame(animal_id = c("001", "002"), input_source = "fixture.csv")
 lookup <- function(id, source) {

@@ -4,7 +4,7 @@ local({
   on.exit(Sys.setlocale("LC_CTYPE", original_locale))
   Sys.setlocale("LC_CTYPE", "C")
   app <- new.env(parent = globalenv())
-  source("tools/holstein_lookup/app.R", local = app, chdir = TRUE)
+  source("app.R", local = app, chdir = TRUE)
   upload <- htmltools::renderTags(app$upload_controls())$html
   stopifnot(!grepl("&lt;[0-9a-f]{2}&gt;", upload))
 })
