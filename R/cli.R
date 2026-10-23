@@ -3,7 +3,7 @@
 CLI_USAGE <- paste(
   "Usage: Rscript holstein_lookup.R",
   "--input <csv-file-or-directory> --output <output-csv>",
-  "[--id-column animal_id] [--search-prefix 'COLLEGE ']",
+  "[--no-header] [--id-column COLUMN] [--search-prefix 'COLLEGE ']",
   "[--limit N] [--delay-seconds 2] [--verbose]"
 )
 
@@ -19,10 +19,12 @@ argument_value <- function(args, name, default = NULL) {
 }
 
 parse_cli_options <- function(args) {
+  has_header <- !"--no-header" %in% args
   options <- list(
     input = argument_value(args, "--input"),
     output = argument_value(args, "--output"),
-    id_column = argument_value(args, "--id-column", "animal_id"),
+    has_header = has_header,
+    id_column = argument_value(args, "--id-column", if (has_header) "animal_id" else "X1"),
     prefix = argument_value(args, "--search-prefix", ""),
     delay = suppressWarnings(as.numeric(argument_value(args, "--delay-seconds", "2"))),
     limit = argument_value(args, "--limit"),
@@ -44,7 +46,7 @@ parse_cli_options <- function(args) {
   options
 }
 
-read_cli_ids <- function(path, column) {
+read_cli_ids <- function(path, column, has_header = TRUE) {
   files <- path
   if (dir.exists(path)) {
     files <- list.files(path, pattern = "\\.csv$", full.names = TRUE)
@@ -53,7 +55,7 @@ read_cli_ids <- function(path, column) {
     stop("No CSV files found in input directory", call. = FALSE)
   }
   rows <- lapply(files, function(file) {
-    input <- read_upload(file, allow_empty = TRUE)
+    input <- read_upload(file, allow_empty = TRUE, has_header = has_header)
     prepare_ids(input, column, basename(file), allow_empty = TRUE)
   })
   ids <- dplyr::bind_rows(rows)
@@ -73,7 +75,7 @@ run_cli <- function(options, lookup = create_lookup_client(options$prefix, optio
   results <- read_result_csv(options$output)
   failed_path <- paste0(options$output, ".failed.csv")
   failures <- read_result_csv(failed_path)
-  ids <- read_cli_ids(options$input, options$id_column)
+  ids <- read_cli_ids(options$input, options$id_column, has_header = options$has_header)
   ids <- pending_ids(ids, options$prefix, results)
   if (!is.null(options$limit)) {
     ids <- head(ids, options$limit)

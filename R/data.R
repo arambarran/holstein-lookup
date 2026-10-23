@@ -7,9 +7,10 @@ MATCH_LABELS <- c(
   error = "Errors"
 )
 
-read_upload <- function(path, allow_empty = FALSE) {
+read_upload <- function(path, allow_empty = FALSE, has_header = TRUE) {
   rows <- readr::read_csv(
     path,
+    col_names = has_header,
     col_types = readr::cols(.default = readr::col_character()),
     name_repair = "check_unique",
     show_col_types = FALSE,
@@ -17,7 +18,7 @@ read_upload <- function(path, allow_empty = FALSE) {
     na = ""
   )
   if (ncol(rows) == 0 || (nrow(rows) == 0 && !allow_empty)) {
-    stop("The CSV needs a header and at least one data row.", call. = FALSE)
+    stop("The CSV needs at least one data row.", call. = FALSE)
   }
   if (nrow(readr::problems(rows)) > 0) {
     stop("The CSV has inconsistent rows. Check its separators and quotes.", call. = FALSE)

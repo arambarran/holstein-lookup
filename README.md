@@ -76,6 +76,18 @@ trailing space). Omit the prefix for full registration numbers.
 Optional flags: `--id-column COLUMN`, `--limit N`, and `--delay-seconds N`
 (default: 2). `--input` also accepts a directory of CSV files.
 
+For a CSV without a header, add `--no-header`. The first row is treated as data,
+and IDs are read from the first column (`X1`) by default. Use `--id-column X2`
+for the second column, `X3` for the third, and so on. For example:
+
+```bash
+Rscript holstein_lookup.R --input input.csv --output results.csv --no-header
+```
+
+When reading a directory, the header setting applies to every CSV in it.
+Files with headers remain the default and use the `animal_id` column unless
+you specify `--id-column`.
+
 Results are saved after each lookup. Errors go to `results.csv.failed.csv`.
 Rerun the same command to retry failures and skip completed IDs; use a new output
 filename to refresh previous results.

@@ -12,6 +12,20 @@ stopifnot(normalize_prefix(" COLLEGE  ") == "COLLEGE ")
 stopifnot(normalize_prefix("  ") == "")
 stopifnot(inherits(try(prepare_ids(input, "missing", "herd.csv"), silent = TRUE), "try-error"))
 
+# Headerless files retain the first row, leading zeros, and duplicate values.
+headerless <- tempfile(fileext = ".csv")
+writeLines(c("004464,004464", "2034,note"), headerless)
+rows <- read_upload(headerless, has_header = FALSE)
+stopifnot(identical(names(rows), c("X1", "X2")))
+stopifnot(identical(rows$X1, c("004464", "2034")), rows$X2[[1]] == "004464")
+writeLines("0001", headerless)
+stopifnot(identical(read_upload(headerless, has_header = FALSE)$X1, "0001"))
+writeLines(character(), headerless)
+stopifnot(inherits(try(read_upload(headerless, has_header = FALSE), silent = TRUE), "try-error"))
+writeLines(c("001,a", "002,b,extra"), headerless)
+stopifnot(inherits(suppressWarnings(try(read_upload(headerless, has_header = FALSE), silent = TRUE)), "try-error"))
+unlink(headerless)
+
 # Settings reject invalid values before the worker starts.
 settings <- lookup_settings(ids, " COLLEGE ", 2, 1, "herd.csv")
 stopifnot(nrow(settings$ids) == 1, settings$prefix == "COLLEGE ")
