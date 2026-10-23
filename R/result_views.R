@@ -12,7 +12,8 @@ result_column_definitions <- function(columns) {
     error_message = "Error details",
     request_url = "Request URL",
     birth_codes = "Birth codes",
-    genotyping_code = "Genotyping code"
+    genotyping_code = "Genotyping code",
+    Colour = "Coat colour"
   )
   definitions <- lapply(columns, function(column) {
     label <- if (column %in% names(labels)) labels[[column]] else column

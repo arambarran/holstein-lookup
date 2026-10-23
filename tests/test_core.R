@@ -1,5 +1,12 @@
 source("R/lookup.R")
 
+# Decode coat colours without confusing them with birth or genotyping codes.
+colours <- parse_search_response(paste0(
+  '{"Data":[{"Colour":"B&W"},{"Colour":"R&W"},',
+  '{"Colour":"OTHER"},{"Colour":""},{"Colour":null}]}'
+))
+stopifnot(identical(colours$Colour, c("Black & white", "Red & white", "OTHER", "", NA_character_)))
+
 fixture_response <- function(url) {
   if (grepl("ReadAnimalSearchGrid", url)) {
     return('{"Data":[{"AnimalId":123,"Name":"TEST ANIMAL"}]}')

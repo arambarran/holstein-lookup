@@ -73,6 +73,9 @@ filename to refresh previous results.
 
 ## Reading results
 
+Coat colour is shown separately from birth and genotyping codes. The `Colour`
+column expands `B&W` to **Black & white** and `R&W` to **Red & white**.
+
 `match_status` is `unique`, `multiple`, `not_found`, or `error`. Multiple matches
 produce separate rows. A blank birth or genotyping code means no recognized code
 was extracted; it does not confirm the animal's reproductive or testing history.

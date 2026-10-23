@@ -99,7 +99,13 @@ parse_search_response <- function(body) {
   if (is.null(parsed$Data) || length(parsed$Data) == 0) {
     return(data.frame())
   }
-  as.data.frame(parsed$Data, stringsAsFactors = FALSE)
+  rows <- as.data.frame(parsed$Data, stringsAsFactors = FALSE)
+  if ("Colour" %in% names(rows)) {
+    colours <- c("B&W" = "Black & white", "R&W" = "Red & white")
+    known <- rows$Colour %in% names(colours)
+    rows$Colour[known] <- unname(colours[rows$Colour[known]])
+  }
+  rows
 }
 
 parse_animal_codes <- function(html) {
