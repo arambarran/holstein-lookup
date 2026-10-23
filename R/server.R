@@ -62,7 +62,8 @@ create_lookup_server <- function(app_directory, start_worker = start_lookup_work
       ))
     })
 
-    observeEvent(input$csv, {
+    observeEvent(list(input$csv, input$has_header), {
+      req(input$csv)
       if (state$running) {
         return()
       }
@@ -73,7 +74,7 @@ create_lookup_server <- function(app_directory, start_worker = start_lookup_work
         if (!grepl("\\.csv$", input$csv$name, ignore.case = TRUE)) {
           stop("Please choose a .csv file.")
         }
-        rows <- read_upload(input$csv$datapath)
+        rows <- read_upload(input$csv$datapath, has_header = isTRUE(input$has_header))
         state$upload <- rows
         preferred <- if ("animal_id" %in% names(rows)) "animal_id" else names(rows)[[1]]
         updateSelectInput(session, "id_column", choices = names(rows), selected = preferred)

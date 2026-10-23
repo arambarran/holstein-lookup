@@ -58,6 +58,8 @@ upload_controls <- function() {
       ),
       div(id = "upload-error", class = "inline-error", role = "alert")
     ),
+    checkboxInput("has_header", "File has a header", value = TRUE),
+    span(class = "field-help", "Uncheck if the first row contains data. Columns will be named X1, X2, etc."),
     uiOutput("upload_info")
   )
 }

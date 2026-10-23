@@ -13,7 +13,9 @@ stopifnot(grepl("1 of 2 IDs processed in this run", progress, fixed = TRUE))
 stopifnot(grepl("Stop lookup", progress, fixed = TRUE))
 
 shiny::testServer(app$server, {
+  session$setInputs(has_header = TRUE)
   stopifnot(!can_run())
+  stopifnot(is.null(state$upload_error))
   session$setInputs(example = 1)
   stopifnot(nrow(state$rows) == 7, state$is_example, !state$running)
 
@@ -47,5 +49,36 @@ shiny::testServer(app$server, {
   stopifnot(is.null(state$upload), !is.null(state$upload_error))
   stopifnot(!can_run())
   unlink(csv)
+})
+
+# Changing the header setting reparses the current file without another upload.
+shiny::testServer(app$server, {
+  session$setInputs(has_header = TRUE, prefix = "", delay = 0, limit = 0)
+  csv <- tempfile(fileext = ".csv")
+  writeLines(c("004464,004464", "2034,0002"), csv)
+  session$setInputs(csv = data.frame(
+    name = "headerless.csv", datapath = csv, size = file.info(csv)$size, type = "text/csv"
+  ))
+  stopifnot(!is.null(state$upload_error), !can_run())
+  session$setInputs(has_header = FALSE, id_column = "X1")
+  stopifnot(is.null(state$upload_error), can_run())
+  stopifnot(identical(names(state$upload), c("X1", "X2")))
+  stopifnot(identical(prepared_ids()$animal_id, c("004464", "2034")))
+  session$setInputs(id_column = "X2")
+  stopifnot(identical(prepared_ids()$animal_id, c("004464", "0002")))
+  session$setInputs(has_header = TRUE)
+  stopifnot(is.null(state$upload), !is.null(state$upload_error), !can_run())
+
+  # A single headerless row is valid, including after a header-only error.
+  single <- tempfile(fileext = ".csv")
+  writeLines("0001", single)
+  session$setInputs(csv = data.frame(
+    name = "single.csv", datapath = single, size = file.info(single)$size, type = "text/csv"
+  ))
+  stopifnot(!can_run())
+  session$setInputs(has_header = FALSE, id_column = "X1")
+  stopifnot(identical(prepared_ids()$animal_id, "0001"), can_run())
+
+  unlink(c(csv, single))
 })
 cat("Shiny session checks passed.\n")

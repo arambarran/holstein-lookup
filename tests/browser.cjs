@@ -49,6 +49,7 @@ async function checkBrowser() {
     await expect(page.locator('#run')).toBeDisabled();
     await expect(page.locator('.btn-file')).toHaveText('Choose file');
     await expect(page.locator('#id_column')).toBeDisabled();
+    await expect(page.getByLabel('File has a header', { exact: true })).toBeChecked();
     expect(staleAssets).toBe(0);
     await expect(page.locator('link[href^="app.css"]')).toHaveAttribute('href', /\?v=[a-f0-9]{32}$/);
     await expect(page.locator('script[src^="app.js"]')).toHaveAttribute('src', /\?v=[a-f0-9]{32}$/);
@@ -112,6 +113,35 @@ async function checkBrowser() {
     await dropFiles(page, '.upload-area', [{ name: 'herd.csv', content: 'animal_id,notes\n004464,a\n2034,b\n' }]);
     await expect(page.locator('#upload_info')).toContainText('2 rows / 2 unique IDs');
     await expect(page.locator('#upload-error')).toBeEmpty();
+    await expect(page.locator('#run')).toBeEnabled();
+
+    // Header changes reparse the same upload, preserving the first row and zeros.
+    await page.locator('#csv').setInputFiles({
+      name: 'headerless.csv', mimeType: 'text/csv', buffer: Buffer.from('004464,004464\n2034,0002\n')
+    });
+    await expect(page.locator('#upload_info')).toContainText('unique');
+    await expect(page.locator('#run')).toBeDisabled();
+    const beforeHeaderChange = uploads;
+    await page.getByLabel('File has a header', { exact: true }).uncheck();
+    await expect(page.locator('#upload_info')).toContainText('2 rows / 2 unique IDs');
+    await expect(page.locator('#id_column')).toHaveValue('X1');
+    await expect(page.locator('#preview tbody tr').first()).toContainText('004464');
+    await expect(page.locator('#search_preview')).toContainText('COLLEGE 004464');
+    await expect(page.locator('#run')).toBeEnabled();
+    await page.evaluate(() => document.querySelector('#id_column').selectize.setValue('X2'));
+    await expect(page.locator('#id_column')).toHaveValue('X2');
+    await expect(page.locator('#upload_info')).toContainText('2 rows / 2 unique IDs');
+    await page.getByLabel('File has a header', { exact: true }).check();
+    await expect(page.locator('#run')).toBeDisabled();
+    expect(uploads).toBe(beforeHeaderChange);
+
+    await page.locator('#csv').setInputFiles({
+      name: 'single.csv', mimeType: 'text/csv', buffer: Buffer.from('0001\n')
+    });
+    await expect(page.locator('#upload_info')).toContainText('at least one data row');
+    await page.getByLabel('File has a header', { exact: true }).uncheck();
+    await expect(page.locator('#upload_info')).toContainText('1 rows / 1 unique IDs');
+    await expect(page.locator('#search_preview')).toContainText('COLLEGE 0001');
     await expect(page.locator('#run')).toBeEnabled();
 
     await page.locator('#example').click();

@@ -112,8 +112,11 @@ ssh -N -L 3838:127.0.0.1:3838 USER@signal.aps.uoguelph.ca
 
 Then open the same browser address on your laptop.
 
-Upload a CSV, select its ID column, optionally enter a prefix such as `COLLEGE`,
-and select **Start lookup**. Filter results and choose columns, then download
+Upload a CSV. If it has no header, uncheck **File has a header**; the first row
+will be kept as data and columns will be named `X1`, `X2`, etc. You can change
+this setting after uploading to refresh the preview without uploading again.
+Select the ID column, optionally enter a prefix such as `COLLEGE`, and select
+**Start lookup**. Filter results and choose columns, then download
 **All results**, **Errors**, or **Export view**. Export before closing the tab or
 starting another batch. **Example data** lets you try the UI without live requests.
 
