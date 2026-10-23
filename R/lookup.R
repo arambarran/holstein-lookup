@@ -23,9 +23,30 @@ create_http_client <- function(directory) {
   })
 }
 
+stop_lookup_error <- function(message, retryable = FALSE) {
+  stop(structure(
+    list(message = message, call = NULL, retryable = retryable),
+    class = c("lookup_transport_error", "error", "condition")
+  ))
+}
+
 response_body <- function(response) {
-  if (response$status != 200L) {
-    stop(sprintf("HTTP %s from Holstein lookup", response$status), call. = FALSE)
+  if (!is.null(response$error)) {
+    stop_lookup_error(paste("Network request failed:", response$error), response$retryable)
+  }
+  if (isTRUE(response$challenge) || response$status != 200L) {
+    message <- sprintf("HTTP %s from Holstein lookup", response$status)
+    if (isTRUE(response$challenge)) {
+      message <- paste("Cloudflare challenge:", message)
+    }
+    if (nzchar(response$ray_id)) {
+      message <- paste0(message, " [Ray ID: ", response$ray_id, "]")
+    }
+    if (nzchar(response$retry_after)) {
+      message <- paste0(message, " [Retry-After: ", response$retry_after, "]")
+    }
+    retryable <- !isTRUE(response$challenge) && response$status %in% c(408L, 500L, 502L, 503L, 504L)
+    stop_lookup_error(message, retryable)
   }
   response$body
 }
@@ -44,21 +65,24 @@ create_response_reader <- function(
   }
 }
 
-read_response_body_with_retry <- function(request_url, read_response, tries = 3L) {
+read_response_body_with_retry <- function(request_url, read_response, tries = 3L, sleep = Sys.sleep) {
   for (attempt in seq_len(tries)) {
     result <- tryCatch(read_response(request_url), error = identity)
     if (!inherits(result, "error")) {
       return(result)
     }
+    if (!isTRUE(result$retryable)) {
+      stop(result)
+    }
 
     if (attempt < tries) {
       # Short pauses avoid failing the whole batch because of one temporary
       # network hiccup or a slow response from the Holstein site.
-      Sys.sleep(2 ^ attempt)
+      sleep(2 ^ attempt)
     }
   }
 
-  stop(conditionMessage(result), call. = FALSE)
+  stop(result)
 }
 
 parse_search_response <- function(body) {

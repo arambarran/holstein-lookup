@@ -11,6 +11,22 @@ spec.loader.exec_module(http)
 
 
 class TransportTests(unittest.TestCase):
+    def test_network_errors_report_type_and_retryability_without_secrets(self):
+        for error, retryable in [
+            (http.Timeout('secret credentials'), True),
+            (http.ConnectionError('secret credentials'), True),
+            (http.SSLError('secret credentials'), False),
+            (http.RequestException('secret credentials'), False),
+        ]:
+            with self.subTest(error=type(error).__name__):
+                session = Mock()
+                session.get.side_effect = error
+                with patch.object(http.requests, 'Session', return_value=session):
+                    result = http.LookupHTTPClient().fetch('https://www.holstein.ca/')
+                self.assertEqual(result['retryable'], retryable)
+                self.assertEqual(result['error'], type(error).__name__)
+                self.assertNotIn('secret', str(result))
+
     def test_search_and_detail_share_a_browser_session(self):
         session = Mock()
         session.get.return_value = Mock(status_code=200, text='{"Data":[]}', headers={})
