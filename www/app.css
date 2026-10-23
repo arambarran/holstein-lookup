@@ -104,17 +104,24 @@ fieldset {
   align-items: center;
   gap: 10px;
 }
+.section-title h2 {
+  line-height: 24px;
+}
 .step-number {
-  display: grid;
-  width: 25px;
-  height: 25px;
-  place-items: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
   border: 1px solid #e5dbb9;
   background: #fffdf6;
   border-radius: 50%;
   color: var(--blue);
   font-size: 12px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
 }
 .utility-links {
   display: flex;
@@ -500,7 +507,7 @@ progress::-webkit-progress-value {
   margin-bottom: 20px;
 }
 .results-heading p {
-  margin: 8px 0 0 35px;
+  margin: 8px 0 0 34px;
   color: var(--muted);
   font-size: 12px;
 }
