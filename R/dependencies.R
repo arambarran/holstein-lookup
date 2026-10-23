@@ -3,7 +3,4 @@ check_dependencies <- function(packages) {
   if (any(!installed)) {
     stop("Install missing R packages: ", paste(packages[!installed], collapse = ", "))
   }
-  if (!nzchar(Sys.which("curl"))) {
-    stop("Install curl and make sure it is on PATH.")
-  }
 }

@@ -17,3 +17,8 @@ test-results/
 
 # OS files
 .DS_Store
+
+# Local Python environment and caches
+.venv/
+__pycache__/
+*.pyc

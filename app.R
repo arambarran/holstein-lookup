@@ -1,7 +1,7 @@
 # From the repository root: shiny::runApp(".")
 source("R/dependencies.R", local = TRUE, encoding = "UTF-8")
 check_dependencies(c(
-  "shiny", "bslib", "reactable", "callr", "jsonlite", "readr", "dplyr", "tibble", "xml2"
+  "shiny", "bslib", "reactable", "callr", "reticulate", "jsonlite", "readr", "dplyr", "tibble", "xml2"
 ))
 if (utils::packageVersion("bslib") < "0.5.0") {
   stop("Please update bslib to version 0.5.0 or later.")

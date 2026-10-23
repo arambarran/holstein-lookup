@@ -25,14 +25,25 @@
 
 ## Setup
 
-Requires R 4.1+, `curl`, and network access to Holstein Canada. Run commands from
-the repository root.
+Requires R 4.1+, Python 3.10+, and network access to Holstein Canada. Run commands
+from the repository root.
 
 Install the lookup packages:
 
 ```bash
-Rscript -e 'install.packages(c("jsonlite", "readr", "dplyr", "tibble", "xml2"), repos = "https://cloud.r-project.org")'
+Rscript -e 'install.packages(c("reticulate", "jsonlite", "readr", "dplyr", "tibble", "xml2"), repos = "https://cloud.r-project.org")'
 ```
+
+Install the Python dependency in a local environment:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+export RETICULATE_PYTHON="$(pwd)/.venv/bin/python"
+```
+
+Set `RETICULATE_PYTHON` before starting R. In an existing R console, before its
+first Python call, use `Sys.setenv(RETICULATE_PYTHON = normalizePath(".venv/bin/python"))`.
 
 For the Shiny app, also install:
 
@@ -126,9 +137,8 @@ starting another batch. **Example data** lets you try the UI without live reques
 produce separate rows. A blank birth or genotyping code means no recognized code
 was extracted; it does not confirm the animal's reproductive or testing history.
 
-Live lookups have worked from signal; other networks may receive HTTP 403 from
-Holstein Canada. Both interfaces use the same lookup client. Check `error_message`
-when a lookup fails.
+If a lookup fails, check `error_message` in the results or download **Errors**
+from the app.
 
 ## Tests
 
@@ -136,6 +146,7 @@ Run the offline R checks from the repository root:
 
 ```bash
 Rscript tests/run.R
+.venv/bin/python -m unittest discover -s tests -p 'test_*.py'
 ```
 
 With the app running locally and `@playwright/test` installed, run the browser

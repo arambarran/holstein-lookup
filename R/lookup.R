@@ -3,75 +3,50 @@
 
 HOLSTEIN_SEARCH_URL <- "https://www.holstein.ca/en/AIS/ReadAnimalSearchGrid"
 
-HOLSTEIN_HEADERS <- c(
-  "User-Agent" = paste(
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
-    "AppleWebKit/537.36 (KHTML, like Gecko)",
-    "Chrome/131.0.0.0 Safari/537.36"
-  ),
-  "Accept" = "application/json, text/javascript, */*; q=0.01",
-  "Accept-Language" = "en-US,en;q=0.9",
-  "Referer" = "https://www.holstein.ca/",
-  "X-Requested-With" = "XMLHttpRequest"
-)
+# Capture the module path while sourcing, before CLI callers change directory.
+LOOKUP_MODULE_DIRECTORY <- local({
+  sources <- Filter(function(frame) !is.null(frame$ofile), sys.frames())
+  source_file <- tail(sources, 1)[[1]]$ofile
+  file.path(dirname(normalizePath(source_file)), "python")
+})
 
-read_response_body <- function(request_url) {
-  # curl gives us better control than R's built-in download helpers here,
-  # especially for sending the same headers the Holstein website uses.
-  stderr_path <- tempfile("holstein-curl-stderr-")
-  on.exit(unlink(stderr_path), add = TRUE)
-
-  curl_headers <- paste(names(HOLSTEIN_HEADERS), HOLSTEIN_HEADERS, sep = ": ")
-  curl_args <- c(
-    "-sS",
-    "-L",
-    "--max-time",
-    "60",
-    as.vector(rbind("-H", curl_headers)),
-    "-w",
-    "\n%{http_code}",
-    request_url
-  )
-
-  stdout <- system2(
-    Sys.which("curl")[[1]],
-    shQuote(curl_args),
-    stdout = TRUE,
-    stderr = stderr_path
-  )
-  body <- paste(stdout, collapse = "\n")
-  http_code <- NA_character_
-  # curl appends the HTTP status to the response so we can catch blocked or
-  # missing pages before trying to parse them as lookup data.
-  if (grepl("\n[0-9]{3}$", body)) {
-    http_code <- sub(".*\n([0-9]{3})$", "\\1", body)
-    body <- sub("\n[0-9]{3}$", "", body)
-  }
-
-  exit_status <- attr(stdout, "status")
-  if (is.null(exit_status)) {
-    exit_status <- 0L
-  }
-
-  stderr <- trimws(paste(readLines(stderr_path, warn = FALSE), collapse = "\n"))
-  if (exit_status != 0L) {
-    message <- sprintf("curl failed with exit status %s", exit_status)
-    if (nzchar(stderr)) {
-      message <- paste(message, stderr, sep = ": ")
-    }
-    stop(message, call. = FALSE)
-  }
-
-  if (!is.na(http_code) && http_code != "200") {
-    stop(sprintf("HTTP %s from Holstein lookup", http_code), call. = FALSE)
-  }
-
-  body
+create_http_client <- function(directory) {
+  tryCatch({
+    module <- reticulate::import_from_path("holstein_http", path = directory)
+    module$LookupHTTPClient()
+  }, error = function(error) {
+    stop(paste(
+      "Could not initialize the lookup transport. Install Python 3.10+ and",
+      "requirements.txt, then select that environment with RETICULATE_PYTHON.",
+      conditionMessage(error)
+    ), call. = FALSE)
+  })
 }
 
-read_response_body_with_retry <- function(request_url, tries = 3L) {
+response_body <- function(response) {
+  if (response$status != 200L) {
+    stop(sprintf("HTTP %s from Holstein lookup", response$status), call. = FALSE)
+  }
+  response$body
+}
+
+create_response_reader <- function(
+  module_directory = LOOKUP_MODULE_DIRECTORY, client_factory = create_http_client
+) {
+  force(module_directory)
+  force(client_factory)
+  client <- NULL
+  function(request_url) {
+    if (is.null(client)) {
+      client <<- client_factory(module_directory)
+    }
+    response_body(client$fetch(request_url))
+  }
+}
+
+read_response_body_with_retry <- function(request_url, read_response, tries = 3L) {
   for (attempt in seq_len(tries)) {
-    result <- tryCatch(read_response_body(request_url), error = identity)
+    result <- tryCatch(read_response(request_url), error = identity)
     if (!inherits(result, "error")) {
       return(result)
     }
@@ -181,10 +156,14 @@ lookup_one <- function(animal_id, input_source, prefix, delay, read_response) {
 }
 
 create_lookup_client <- function(
-  prefix = "", delay = 2, read_response = read_response_body_with_retry
+  prefix = "", delay = 2, read_response = NULL
 ) {
   force(prefix)
   force(delay)
+  if (is.null(read_response)) {
+    reader <- create_response_reader()
+    read_response <- function(url) read_response_body_with_retry(url, reader)
+  }
   force(read_response)
   function(animal_id, input_source) {
     lookup_one(animal_id, input_source, prefix, delay, read_response)
