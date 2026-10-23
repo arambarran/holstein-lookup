@@ -105,9 +105,8 @@ filename to refresh previous results.
 
 ## Shiny app
 
-> [!NOTE]
-> Shared Shiny deployment is a work in progress. You can run the app yourself
-> using the instructions below.
+Run the app locally with the command below, or follow the
+[Posit Connect Cloud deployment guide](docs/deployment.md) to publish a shared URL.
 
 ```bash
 Rscript -e 'shiny::runApp(".", host="127.0.0.1", port=3838, launch.browser=FALSE)'
